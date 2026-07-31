@@ -97,6 +97,36 @@ export default function LandlordDashboard() {
     }
   };
 
+  const [editingProperty, setEditingProperty] = useState<Property | null>(null);
+
+  const handleDeleteProperty = async (id: number) => {
+    if (!window.confirm('Are you sure you want to delete this property listing?')) return;
+    try {
+      await propertyService.delete(id);
+      loadProperties();
+    } catch (err) {
+      alert('Failed to delete property');
+    }
+  };
+
+  const handleUpdateProperty = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProperty) return;
+    setLoading(true);
+    setError('');
+
+    try {
+      await propertyService.update(editingProperty.id, editingProperty);
+      setEditingProperty(null);
+      alert('Property updated successfully!');
+      loadProperties();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update property');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-white shadow">
@@ -141,6 +171,76 @@ export default function LandlordDashboard() {
         {error && (
           <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
             {error}
+          </div>
+        )}
+
+        {/* Modal for Editing Property */}
+        {editingProperty && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
+              <h2 className="text-xl font-bold mb-4">Edit Property</h2>
+              <form onSubmit={handleUpdateProperty} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Title</label>
+                  <input
+                    type="text"
+                    value={editingProperty.title}
+                    onChange={(e) => setEditingProperty({ ...editingProperty, title: e.target.value })}
+                    required
+                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Address</label>
+                  <input
+                    type="text"
+                    value={editingProperty.address}
+                    onChange={(e) => setEditingProperty({ ...editingProperty, address: e.target.value })}
+                    required
+                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Price (KSh/mo)</label>
+                    <input
+                      type="number"
+                      value={editingProperty.price_per_month}
+                      onChange={(e) => setEditingProperty({ ...editingProperty, price_per_month: parseFloat(e.target.value) })}
+                      required
+                      className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Available</label>
+                    <select
+                      value={editingProperty.available ? 'true' : 'false'}
+                      onChange={(e) => setEditingProperty({ ...editingProperty, available: e.target.value === 'true' })}
+                      className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    >
+                      <option value="true">Yes</option>
+                      <option value="false">No</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="flex gap-2 justify-end pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setEditingProperty(null)}
+                    className="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:bg-gray-400"
+                  >
+                    Save Changes
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         )}
 
@@ -303,10 +403,16 @@ export default function LandlordDashboard() {
                       </div>
 
                       <div className="flex gap-2">
-                        <button className="flex-1 px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
+                        <button
+                          onClick={() => setEditingProperty(property)}
+                          className="flex-1 px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-semibold"
+                        >
                           Edit
                         </button>
-                        <button className="flex-1 px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm">
+                        <button
+                          onClick={() => handleDeleteProperty(property.id)}
+                          className="flex-1 px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm font-semibold"
+                        >
                           Delete
                         </button>
                       </div>
@@ -327,7 +433,7 @@ export default function LandlordDashboard() {
             <table className="w-full">
               <thead className="bg-gray-100">
                 <tr>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Tenant</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Tenant Info</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Property</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Status</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Payment</th>
@@ -338,16 +444,27 @@ export default function LandlordDashboard() {
                 {connections.length > 0 ? (
                   connections.map((conn) => (
                     <tr key={conn.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 text-sm text-gray-900">Tenant ID: {conn.tenant_id}</td>
-                      <td className="px-6 py-4 text-sm text-gray-900">Property ID: {conn.property_id}</td>
+                      <td className="px-6 py-4 text-sm text-gray-900">
+                        <div className="font-semibold">{conn.tenant_name || `Tenant #${conn.tenant_id}`}</div>
+                        <div className="text-xs text-gray-500">{conn.tenant_phone && `Phone: ${conn.tenant_phone}`}</div>
+                        <div className="text-xs text-gray-500">{conn.tenant_email && `Email: ${conn.tenant_email}`}</div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900 font-medium">
+                        {conn.property_title || `Property #${conn.property_id}`}
+                      </td>
                       <td className="px-6 py-4 text-sm">
                         <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
                           conn.status === 'successful'
                             ? 'bg-green-100 text-green-800'
+                            : conn.status === 'rejected'
+                            ? 'bg-red-100 text-red-800'
                             : 'bg-yellow-100 text-yellow-800'
                         }`}>
                           {conn.status}
                         </span>
+                        {conn.landlord_note && (
+                          <div className="text-xs text-gray-500 mt-1">Note: {conn.landlord_note}</div>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900">
                         KSh. {conn.payment_amount} ({conn.payment_status})

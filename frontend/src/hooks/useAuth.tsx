@@ -7,8 +7,8 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   isLoading: boolean;
-  register: (email: string, password: string, fullName: string, phone: string, userType: 'landlord' | 'tenant') => Promise<void>;
-  login: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string, fullName: string, phone: string, userType: 'landlord' | 'tenant') => Promise<User>;
+  login: (email: string, password: string) => Promise<User>;
   logout: () => void;
 }
 
@@ -22,7 +22,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('token'));
   const [isLoading, setIsLoading] = useState(false);
 
-  const register = async (email: string, password: string, fullName: string, phone: string, userType: 'landlord' | 'tenant') => {
+  const register = async (email: string, password: string, fullName: string, phone: string, userType: 'landlord' | 'tenant'): Promise<User> => {
     setIsLoading(true);
     try {
       const response: AuthResponse = await authService.register({
@@ -36,12 +36,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setToken(response.token);
       localStorage.setItem('token', response.token);
       localStorage.setItem('user', JSON.stringify(response.user));
+      return response.user;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<User> => {
     setIsLoading(true);
     try {
       const response: AuthResponse = await authService.login({ email, password });
@@ -49,6 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setToken(response.token);
       localStorage.setItem('token', response.token);
       localStorage.setItem('user', JSON.stringify(response.user));
+      return response.user;
     } finally {
       setIsLoading(false);
     }

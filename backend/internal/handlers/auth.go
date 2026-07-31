@@ -82,7 +82,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	var user models.User
 	var passwordHash string
 	err := h.db.QueryRow(
-		"SELECT id, email, password_hash, full_name, phone, user_type FROM users WHERE email = $1",
+		"SELECT id, email, password_hash, full_name, COALESCE(phone, ''), user_type FROM users WHERE email = $1",
 		req.Email,
 	).Scan(&user.ID, &user.Email, &passwordHash, &user.FullName, &user.Phone, &user.UserType)
 

@@ -24,17 +24,12 @@ export default function Login() {
     setLoading(true);
 
     try {
-      await login(formData.email, formData.password);
-      // Redirect based on user type
-      setTimeout(() => {
-        const storedUser = localStorage.getItem('user');
-        const userData = storedUser ? JSON.parse(storedUser) : null;
-        if (userData?.user_type === 'landlord') {
-          navigate('/landlord/dashboard');
-        } else {
-          navigate('/search');
-        }
-      }, 100);
+      const loggedInUser = await login(formData.email, formData.password);
+      if (loggedInUser?.user_type === 'landlord') {
+        navigate('/landlord/dashboard');
+      } else {
+        navigate('/search');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {

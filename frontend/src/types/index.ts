@@ -41,6 +41,12 @@ export interface Connection {
   payment_amount: number;
   created_at: string;
   updated_at: string;
+  tenant_name?: string;
+  tenant_phone?: string;
+  tenant_email?: string;
+  property_title?: string;
+  landlord_name?: string;
+  landlord_phone?: string;
 }
 
 export interface AuthResponse {
