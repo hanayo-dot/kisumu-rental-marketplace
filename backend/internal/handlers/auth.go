@@ -4,9 +4,10 @@ import (
 	"database/sql"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"kisumu-rental-marketplace/internal/models"
 	"kisumu-rental-marketplace/internal/utils"
+
+	"github.com/gin-gonic/gin"
 )
 
 type AuthHandler struct {
