@@ -25,6 +25,11 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
+	if req.Email == "" || req.Password == "" || req.FullName == "" || req.UserType == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "email, password, full_name, and user_type are required"})
+		return
+	}
+
 	// Hash password
 	passwordHash, err := utils.HashPassword(req.Password)
 	if err != nil {
@@ -76,6 +81,11 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	var req models.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if req.Email == "" || req.Password == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "email and password are required"})
 		return
 	}
 

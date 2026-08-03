@@ -7,7 +7,7 @@ export default function Register() {
   const { register } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  
+
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -19,7 +19,7 @@ export default function Register() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -33,7 +33,13 @@ export default function Register() {
 
     setLoading(true);
     try {
-      await register(formData.email, formData.password, formData.fullName, formData.phone, formData.userType);
+      await register(
+        formData.email.trim(),
+        formData.password,
+        formData.fullName.trim(),
+        formData.phone.trim(),
+        formData.userType,
+      );
       navigate(formData.userType === 'landlord' ? '/landlord/dashboard' : '/search');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');

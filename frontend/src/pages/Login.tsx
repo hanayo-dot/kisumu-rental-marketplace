@@ -7,7 +7,7 @@ export default function Login() {
   const { login } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  
+
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -15,7 +15,7 @@ export default function Login() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -24,17 +24,14 @@ export default function Login() {
     setLoading(true);
 
     try {
-      await login(formData.email, formData.password);
-      // Redirect based on user type
-      setTimeout(() => {
-        const storedUser = localStorage.getItem('user');
-        const userData = storedUser ? JSON.parse(storedUser) : null;
-        if (userData?.user_type === 'landlord') {
-          navigate('/landlord/dashboard');
-        } else {
-          navigate('/search');
-        }
-      }, 100);
+      await login(formData.email.trim(), formData.password);
+      const storedUser = localStorage.getItem('user');
+      const userData = storedUser ? JSON.parse(storedUser) : null;
+      if (userData?.user_type === 'landlord') {
+        navigate('/landlord/dashboard');
+      } else {
+        navigate('/search');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
