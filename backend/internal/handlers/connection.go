@@ -50,6 +50,17 @@ func (h *ConnectionHandler) CreateConnection(c *gin.Context) {
 		return
 	}
 
+	// Check if an active connection already exists
+	var existingID int
+	err = h.db.QueryRow(
+		"SELECT id FROM connections WHERE tenant_id = $1 AND property_id = $2 AND status NOT IN ('rejected', 'expired')",
+		tenantID, req.PropertyID,
+	).Scan(&existingID)
+	if err == nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "A connection request for this property already exists"})
+		return
+	}
+
 	// Create connection
 	var connection models.Connection
 	err = h.db.QueryRow(
@@ -64,6 +75,7 @@ func (h *ConnectionHandler) CreateConnection(c *gin.Context) {
 		return
 	}
 
+	connection.PropertyTitle = prop.Title
 	c.JSON(http.StatusCreated, connection)
 }
 
@@ -81,14 +93,26 @@ func (h *ConnectionHandler) ListConnections(c *gin.Context) {
 
 	if userType == "landlord" {
 		rows, err = h.db.Query(
-			`SELECT id, tenant_id, property_id, landlord_id, status, landlord_note, verified_at, payment_status, payment_amount, created_at, updated_at 
-			FROM connections WHERE landlord_id = $1 ORDER BY created_at DESC`,
+			`SELECT c.id, c.tenant_id, c.property_id, c.landlord_id, c.status, COALESCE(c.landlord_note, ''), 
+			        c.verified_at, c.payment_status, c.payment_amount, c.created_at, c.updated_at,
+			        u.full_name, COALESCE(u.phone, ''), u.email, p.title
+			 FROM connections c
+			 JOIN users u ON c.tenant_id = u.id
+			 JOIN properties p ON c.property_id = p.id
+			 WHERE c.landlord_id = $1 
+			 ORDER BY c.created_at DESC`,
 			userID.(int),
 		)
 	} else {
 		rows, err = h.db.Query(
-			`SELECT id, tenant_id, property_id, landlord_id, status, landlord_note, verified_at, payment_status, payment_amount, created_at, updated_at 
-			FROM connections WHERE tenant_id = $1 ORDER BY created_at DESC`,
+			`SELECT c.id, c.tenant_id, c.property_id, c.landlord_id, c.status, COALESCE(c.landlord_note, ''), 
+			        c.verified_at, c.payment_status, c.payment_amount, c.created_at, c.updated_at,
+			        u.full_name, COALESCE(u.phone, ''), p.title
+			 FROM connections c
+			 JOIN users u ON c.landlord_id = u.id
+			 JOIN properties p ON c.property_id = p.id
+			 WHERE c.tenant_id = $1 
+			 ORDER BY c.created_at DESC`,
 			userID.(int),
 		)
 	}
@@ -102,8 +126,14 @@ func (h *ConnectionHandler) ListConnections(c *gin.Context) {
 	var connections []models.Connection
 	for rows.Next() {
 		var conn models.Connection
-		if err := rows.Scan(&conn.ID, &conn.TenantID, &conn.PropertyID, &conn.LandlordID, &conn.Status, &conn.LandlordNote, &conn.VerifiedAt, &conn.PaymentStatus, &conn.PaymentAmount, &conn.CreatedAt, &conn.UpdatedAt); err != nil {
-			continue
+		if userType == "landlord" {
+			if err := rows.Scan(&conn.ID, &conn.TenantID, &conn.PropertyID, &conn.LandlordID, &conn.Status, &conn.LandlordNote, &conn.VerifiedAt, &conn.PaymentStatus, &conn.PaymentAmount, &conn.CreatedAt, &conn.UpdatedAt, &conn.TenantName, &conn.TenantPhone, &conn.TenantEmail, &conn.PropertyTitle); err != nil {
+				continue
+			}
+		} else {
+			if err := rows.Scan(&conn.ID, &conn.TenantID, &conn.PropertyID, &conn.LandlordID, &conn.Status, &conn.LandlordNote, &conn.VerifiedAt, &conn.PaymentStatus, &conn.PaymentAmount, &conn.CreatedAt, &conn.UpdatedAt, &conn.LandlordName, &conn.LandlordPhone, &conn.PropertyTitle); err != nil {
+				continue
+			}
 		}
 		connections = append(connections, conn)
 	}

@@ -10,32 +10,21 @@ const getHeaders = () => {
   };
 };
 
-const parseResponse = async <T>(response: Response): Promise<T> => {
-  const text = await response.text();
-  const isJson = response.headers.get('content-type')?.includes('application/json');
-
+async function handleResponse<T>(response: Response, defaultErrorMsg: string): Promise<T> {
   if (!response.ok) {
-    let errorMessage = response.statusText || 'Request failed';
-    if (text) {
-      try {
-        const data = isJson ? JSON.parse(text) : null;
-        if (data?.error) errorMessage = data.error;
-        else if (data?.message) errorMessage = data.message;
-        else if (data) errorMessage = JSON.stringify(data);
-        else errorMessage = text;
-      } catch {
-        errorMessage = text;
+    let errorMsg = defaultErrorMsg;
+    try {
+      const data = await response.json();
+      if (data && data.error) {
+        errorMsg = data.error;
       }
+    } catch (_) {
+      // Ignore JSON parse error on non-ok responses
     }
-    throw new Error(errorMessage || 'Request failed');
+    throw new Error(errorMsg);
   }
-
-  if (!text) {
-    return null as T;
-  }
-
-  return isJson ? (JSON.parse(text) as T) : (text as unknown as T);
-};
+  return response.json();
+}
 
 export const authService = {
   register: async (data: RegisterRequest): Promise<AuthResponse> => {
@@ -44,7 +33,7 @@ export const authService = {
       headers: getHeaders(),
       body: JSON.stringify(data),
     });
-    return parseResponse<AuthResponse>(response);
+    return handleResponse<AuthResponse>(response, 'Registration failed');
   },
 
   login: async (data: LoginRequest): Promise<AuthResponse> => {
@@ -53,7 +42,7 @@ export const authService = {
       headers: getHeaders(),
       body: JSON.stringify(data),
     });
-    return parseResponse<AuthResponse>(response);
+    return handleResponse<AuthResponse>(response, 'Login failed');
   },
 
   logout: () => {
@@ -69,24 +58,21 @@ export const propertyService = {
       headers: getHeaders(),
       body: JSON.stringify(data),
     });
-    if (!response.ok) throw new Error('Failed to create property');
-    return response.json();
+    return handleResponse<Property>(response, 'Failed to create property');
   },
 
   list: async (): Promise<Property[]> => {
     const response = await fetch(`${API_BASE_URL}/properties`, {
       headers: getHeaders(),
     });
-    if (!response.ok) throw new Error('Failed to fetch properties');
-    return response.json();
+    return handleResponse<Property[]>(response, 'Failed to fetch properties');
   },
 
   get: async (id: number): Promise<Property> => {
     const response = await fetch(`${API_BASE_URL}/properties/${id}`, {
       headers: getHeaders(),
     });
-    if (!response.ok) throw new Error('Failed to fetch property');
-    return response.json();
+    return handleResponse<Property>(response, 'Failed to fetch property');
   },
 
   update: async (id: number, data: Partial<Property>): Promise<void> => {
@@ -95,7 +81,7 @@ export const propertyService = {
       headers: getHeaders(),
       body: JSON.stringify(data),
     });
-    await parseResponse<void>(response);
+    await handleResponse<{ message: string }>(response, 'Failed to update property');
   },
 
   delete: async (id: number): Promise<void> => {
@@ -103,7 +89,7 @@ export const propertyService = {
       method: 'DELETE',
       headers: getHeaders(),
     });
-    await parseResponse<void>(response);
+    await handleResponse<{ message: string }>(response, 'Failed to delete property');
   },
 
   search: async (params: {
@@ -121,7 +107,7 @@ export const propertyService = {
     const response = await fetch(`${API_BASE_URL}/properties/search?${queryParams}`, {
       headers: getHeaders(),
     });
-    return parseResponse<Property[]>(response);
+    return handleResponse<Property[]>(response, 'Search failed');
   },
 };
 
@@ -132,15 +118,14 @@ export const connectionService = {
       headers: getHeaders(),
       body: JSON.stringify({ property_id: propertyId }),
     });
-    if (!response.ok) throw new Error('Failed to create connection');
-    return response.json();
+    return handleResponse<Connection>(response, 'Failed to create connection');
   },
 
   list: async (userType: 'landlord' | 'tenant'): Promise<Connection[]> => {
     const response = await fetch(`${API_BASE_URL}/connections?user_type=${userType}`, {
       headers: getHeaders(),
     });
-    return parseResponse<Connection[]>(response);
+    return handleResponse<Connection[]>(response, 'Failed to fetch connections');
   },
 
   verify: async (connectionId: number, status: string, note?: string): Promise<void> => {
@@ -149,6 +134,6 @@ export const connectionService = {
       headers: getHeaders(),
       body: JSON.stringify({ status, landlord_note: note }),
     });
-    await parseResponse<void>(response);
+    await handleResponse<{ message: string }>(response, 'Failed to verify connection');
   },
 };

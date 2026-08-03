@@ -35,18 +35,26 @@ type Property struct {
 
 // Connection represents a tenant-property connection
 type Connection struct {
-	ID            int       `json:"id"`
-	TenantID      int       `json:"tenant_id"`
-	PropertyID    int       `json:"property_id"`
-	LandlordID    int       `json:"landlord_id"`
-	Status        string    `json:"status"` // "pending", "viewing_scheduled", "contacted", "successful", "rejected", "expired"
-	LandlordNote  string    `json:"landlord_note"`
-	ConnectionDate time.Time `json:"connection_date"`
-	VerifiedAt    *time.Time `json:"verified_at"`
-	PaymentStatus string    `json:"payment_status"` // "unpaid", "pending", "paid"
-	PaymentAmount float64   `json:"payment_amount"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	ID             int        `json:"id"`
+	TenantID       int        `json:"tenant_id"`
+	PropertyID     int        `json:"property_id"`
+	LandlordID     int        `json:"landlord_id"`
+	Status         string     `json:"status"` // "pending", "viewing_scheduled", "contacted", "successful", "rejected", "expired"
+	LandlordNote   string     `json:"landlord_note"`
+	ConnectionDate time.Time  `json:"connection_date"`
+	VerifiedAt     *time.Time `json:"verified_at"`
+	PaymentStatus  string     `json:"payment_status"` // "unpaid", "pending", "paid"
+	PaymentAmount  float64    `json:"payment_amount"`
+	CreatedAt      time.Time  `json:"created_at"`
+	UpdatedAt      time.Time  `json:"updated_at"`
+
+	// Enriched fields from joins
+	TenantName    string `json:"tenant_name,omitempty"`
+	TenantPhone   string `json:"tenant_phone,omitempty"`
+	TenantEmail   string `json:"tenant_email,omitempty"`
+	PropertyTitle string `json:"property_title,omitempty"`
+	LandlordName  string `json:"landlord_name,omitempty"`
+	LandlordPhone string `json:"landlord_phone,omitempty"`
 }
 
 // LandlordListing tracks listing usage for landlords

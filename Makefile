@@ -20,6 +20,8 @@ help:
 	@echo "  make install-backend     - Install Go dependencies"
 	@echo "  make install-frontend    - Install Node dependencies"
 
+COMPOSE_CMD := $(shell command -v docker-compose 2>/dev/null || (docker compose version >/dev/null 2>&1 && echo "docker compose"))
+
 install-backend:
 	cd backend && go mod download
 
@@ -27,6 +29,8 @@ install-frontend:
 	cd frontend && npm install
 
 db-start:
+	@docker stop kisumu-db 2>/dev/null || true
+	@docker rm kisumu-db 2>/dev/null || true
 	docker run --name kisumu-db -e POSTGRES_PASSWORD=password -e POSTGRES_DB=kisumu_rental -p 5432:5432 -d postgres:15-alpine
 
 db-create:
@@ -53,12 +57,31 @@ dev:
 	wait
 
 docker-up:
-	docker-compose up --build
+	@if [ -n "$(COMPOSE_CMD)" ]; then \
+		$(COMPOSE_CMD) up --build; \
+	else \
+		echo "docker-compose plugin not found, falling back to standalone Docker CLI..."; \
+		docker network create kisumu-network 2>/dev/null || true; \
+		docker stop kisumu-db kisumu-backend 2>/dev/null || true; \
+		docker rm kisumu-db kisumu-backend 2>/dev/null || true; \
+		docker run -d --name kisumu-db --network kisumu-network -e POSTGRES_PASSWORD=password -e POSTGRES_DB=kisumu_rental -p 5432:5432 postgres:15-alpine; \
+		echo "Waiting for database container to be ready..."; \
+		sleep 3; \
+		docker build -t kisumu-backend ./backend; \
+		docker run -d --name kisumu-backend --network kisumu-network -e DATABASE_URL=postgres://postgres:password@kisumu-db:5432/kisumu_rental?sslmode=disable -e PORT=8080 -p 8080:8080 kisumu-backend; \
+		echo "PostgreSQL running on localhost:5432, Go Backend API running on localhost:8080"; \
+	fi
 
 docker-down:
-	docker-compose down
+	@if [ -n "$(COMPOSE_CMD)" ]; then \
+		$(COMPOSE_CMD) down; \
+	else \
+		docker stop kisumu-backend kisumu-db 2>/dev/null || true; \
+		docker rm kisumu-backend kisumu-db 2>/dev/null || true; \
+		docker network rm kisumu-network 2>/dev/null || true; \
+	fi
 
 clean:
-	docker-compose down -v
+	@if [ -n "$(COMPOSE_CMD)" ]; then $(COMPOSE_CMD) down -v; else docker stop kisumu-backend kisumu-db 2>/dev/null || true; docker rm kisumu-backend kisumu-db 2>/dev/null || true; docker network rm kisumu-network 2>/dev/null || true; fi
 	rm -rf frontend/dist frontend/node_modules
 	go clean ./...

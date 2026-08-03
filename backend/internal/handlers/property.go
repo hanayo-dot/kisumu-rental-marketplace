@@ -46,6 +46,13 @@ func (h *PropertyHandler) CreateProperty(c *gin.Context) {
 		return
 	}
 
+	if req.ImageURLs == nil {
+		req.ImageURLs = []string{}
+	}
+
+	// Ensure landlord listing tracker exists
+	h.db.Exec("INSERT INTO landlord_listings (landlord_id) VALUES ($1) ON CONFLICT (landlord_id) DO NOTHING", landlordID)
+
 	// Check if this is the first free listing or a paid one
 	var freeUsed, paidCount int
 	h.db.QueryRow(
@@ -57,8 +64,7 @@ func (h *PropertyHandler) CreateProperty(c *gin.Context) {
 		// First listing is free, mark it as used
 		h.db.Exec("UPDATE landlord_listings SET free_listings_used = 1 WHERE landlord_id = $1", landlordID)
 	} else {
-		// Charge KSh.250 for additional listings (you would process payment here)
-		// For now, just increment paid_listings
+		// Charge KSh.250 for additional listings
 		h.db.Exec("UPDATE landlord_listings SET paid_listings = paid_listings + 1 WHERE landlord_id = $1", landlordID)
 	}
 
@@ -66,7 +72,7 @@ func (h *PropertyHandler) CreateProperty(c *gin.Context) {
 	err := h.db.QueryRow(
 		`INSERT INTO properties (landlord_id, title, description, address, area, bedrooms, bathrooms, property_type, price_per_month, image_urls) 
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
-		RETURNING id, landlord_id, title, description, address, area, bedrooms, bathrooms, property_type, price_per_month, available, image_urls, created_at, updated_at`,
+		RETURNING id, landlord_id, title, COALESCE(description, ''), address, area, bedrooms, bathrooms, property_type, price_per_month, available, image_urls, created_at, updated_at`,
 		landlordID, req.Title, req.Description, req.Address, req.Area, req.Bedrooms, req.Bathrooms, req.PropertyType, req.PricePerMonth, pq.Array(req.ImageURLs),
 	).Scan(&property.ID, &property.LandlordID, &property.Title, &property.Description, &property.Address, &property.Area,
 		&property.Bedrooms, &property.Bathrooms, &property.PropertyType, &property.PricePerMonth, &property.Available, pq.Array(&property.ImageURLs), &property.CreatedAt, &property.UpdatedAt)
@@ -74,6 +80,10 @@ func (h *PropertyHandler) CreateProperty(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create property"})
 		return
+	}
+
+	if property.ImageURLs == nil {
+		property.ImageURLs = []string{}
 	}
 
 	c.JSON(http.StatusCreated, property)
@@ -88,7 +98,7 @@ func (h *PropertyHandler) ListProperties(c *gin.Context) {
 	}
 
 	rows, err := h.db.Query(
-		"SELECT id, landlord_id, title, description, address, area, bedrooms, bathrooms, property_type, price_per_month, available, image_urls, created_at, updated_at FROM properties WHERE landlord_id = $1",
+		"SELECT id, landlord_id, title, COALESCE(description, ''), address, area, bedrooms, bathrooms, property_type, price_per_month, available, image_urls, created_at, updated_at FROM properties WHERE landlord_id = $1 ORDER BY created_at DESC",
 		userID.(int),
 	)
 	if err != nil {
@@ -104,6 +114,9 @@ func (h *PropertyHandler) ListProperties(c *gin.Context) {
 			&prop.Bedrooms, &prop.Bathrooms, &prop.PropertyType, &prop.PricePerMonth, &prop.Available, pq.Array(&prop.ImageURLs), &prop.CreatedAt, &prop.UpdatedAt); err != nil {
 			continue
 		}
+		if prop.ImageURLs == nil {
+			prop.ImageURLs = []string{}
+		}
 		properties = append(properties, prop)
 	}
 
@@ -116,18 +129,30 @@ func (h *PropertyHandler) ListProperties(c *gin.Context) {
 
 // GetProperty retrieves a single property
 func (h *PropertyHandler) GetProperty(c *gin.Context) {
-	id := c.Param("id")
-	var prop models.Property
+	propID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid property id"})
+		return
+	}
 
-	err := h.db.QueryRow(
-		"SELECT id, landlord_id, title, description, address, area, bedrooms, bathrooms, property_type, price_per_month, available, image_urls, created_at, updated_at FROM properties WHERE id = $1",
-		id,
+	var prop models.Property
+	err = h.db.QueryRow(
+		"SELECT id, landlord_id, title, COALESCE(description, ''), address, area, bedrooms, bathrooms, property_type, price_per_month, available, image_urls, created_at, updated_at FROM properties WHERE id = $1",
+		propID,
 	).Scan(&prop.ID, &prop.LandlordID, &prop.Title, &prop.Description, &prop.Address, &prop.Area,
 		&prop.Bedrooms, &prop.Bathrooms, &prop.PropertyType, &prop.PricePerMonth, &prop.Available, pq.Array(&prop.ImageURLs), &prop.CreatedAt, &prop.UpdatedAt)
 
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "property not found"})
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusNotFound, gin.H{"error": "property not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch property"})
 		return
+	}
+
+	if prop.ImageURLs == nil {
+		prop.ImageURLs = []string{}
 	}
 
 	c.JSON(http.StatusOK, prop)
@@ -141,9 +166,13 @@ func (h *PropertyHandler) UpdateProperty(c *gin.Context) {
 		return
 	}
 
-	id := c.Param("id")
-	var req models.Property
+	propID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid property id"})
+		return
+	}
 
+	var req models.Property
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -151,15 +180,28 @@ func (h *PropertyHandler) UpdateProperty(c *gin.Context) {
 
 	// Verify ownership
 	var landlordID int
-	h.db.QueryRow("SELECT landlord_id FROM properties WHERE id = $1", id).Scan(&landlordID)
+	err = h.db.QueryRow("SELECT landlord_id FROM properties WHERE id = $1", propID).Scan(&landlordID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusNotFound, gin.H{"error": "property not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "database query failed"})
+		return
+	}
+
 	if landlordID != userID.(int) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "unauthorized"})
 		return
 	}
 
-	_, err := h.db.Exec(
-		"UPDATE properties SET title = $1, description = $2, address = $3, bedrooms = $4, bathrooms = $5, price_per_month = $6, available = $7 WHERE id = $8",
-		req.Title, req.Description, req.Address, req.Bedrooms, req.Bathrooms, req.PricePerMonth, req.Available, id,
+	if req.ImageURLs == nil {
+		req.ImageURLs = []string{}
+	}
+
+	_, err = h.db.Exec(
+		"UPDATE properties SET title = $1, description = $2, address = $3, area = $4, bedrooms = $5, bathrooms = $6, price_per_month = $7, available = $8, image_urls = $9, updated_at = NOW() WHERE id = $10",
+		req.Title, req.Description, req.Address, req.Area, req.Bedrooms, req.Bathrooms, req.PricePerMonth, req.Available, pq.Array(req.ImageURLs), propID,
 	)
 
 	if err != nil {
@@ -178,17 +220,30 @@ func (h *PropertyHandler) DeleteProperty(c *gin.Context) {
 		return
 	}
 
-	id := c.Param("id")
+	propID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid property id"})
+		return
+	}
 
 	// Verify ownership
 	var landlordID int
-	h.db.QueryRow("SELECT landlord_id FROM properties WHERE id = $1", id).Scan(&landlordID)
+	err = h.db.QueryRow("SELECT landlord_id FROM properties WHERE id = $1", propID).Scan(&landlordID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusNotFound, gin.H{"error": "property not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "database query failed"})
+		return
+	}
+
 	if landlordID != userID.(int) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "unauthorized"})
 		return
 	}
 
-	_, err := h.db.Exec("DELETE FROM properties WHERE id = $1", id)
+	_, err = h.db.Exec("DELETE FROM properties WHERE id = $1", propID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to delete property"})
 		return
@@ -204,7 +259,7 @@ func (h *PropertyHandler) SearchProperties(c *gin.Context) {
 	maxPrice := c.Query("max_price")
 	pType := c.Query("type")
 
-	query := "SELECT id, landlord_id, title, description, address, area, bedrooms, bathrooms, property_type, price_per_month, available, image_urls, created_at, updated_at FROM properties WHERE available = true"
+	query := "SELECT id, landlord_id, title, COALESCE(description, ''), address, area, bedrooms, bathrooms, property_type, price_per_month, available, image_urls, created_at, updated_at FROM properties WHERE available = true"
 
 	var args []interface{}
 	argIndex := 1
@@ -235,6 +290,8 @@ func (h *PropertyHandler) SearchProperties(c *gin.Context) {
 		argIndex++
 	}
 
+	query += " ORDER BY created_at DESC"
+
 	rows, err := h.db.Query(query, args...)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "search failed"})
@@ -248,6 +305,9 @@ func (h *PropertyHandler) SearchProperties(c *gin.Context) {
 		if err := rows.Scan(&prop.ID, &prop.LandlordID, &prop.Title, &prop.Description, &prop.Address, &prop.Area,
 			&prop.Bedrooms, &prop.Bathrooms, &prop.PropertyType, &prop.PricePerMonth, &prop.Available, pq.Array(&prop.ImageURLs), &prop.CreatedAt, &prop.UpdatedAt); err != nil {
 			continue
+		}
+		if prop.ImageURLs == nil {
+			prop.ImageURLs = []string{}
 		}
 		properties = append(properties, prop)
 	}
