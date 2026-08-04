@@ -35,10 +35,21 @@ export default function Landing() {
 
           <div className="rounded-[2rem] bg-white/80 shadow-xl p-8 ring-1 ring-slate-200 backdrop-blur motion-safe:animate-fade-in">
             <div className="grid gap-4">
-              <div className="rounded-3xl bg-gradient-to-r from-indigo-500 to-sky-400 p-6 text-white shadow-lg motion-safe:animate-pop-in">
-                <p className="text-sm uppercase tracking-[0.18em] text-indigo-100">Featured neighbourhood</p>
-                <h2 className="mt-4 text-3xl font-semibold">Milimani</h2>
-                <p className="mt-2 text-slate-200">Modern apartments and secure family homes near schools, shopping and the lakefront.</p>
+              <div
+                className="relative overflow-hidden rounded-3xl p-6 text-white shadow-lg motion-safe:animate-pop-in"
+                style={{
+                  backgroundImage:
+                    "url('https://images.unsplash.com/photo-1599423300746-b62533397364?auto=format&fit=crop&w=1200&q=80')",
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                }}
+              >
+                <div className="absolute inset-0 bg-slate-900/35"></div>
+                <div className="relative">
+                  <p className="text-sm uppercase tracking-[0.18em] text-slate-100">Featured neighbourhood</p>
+                  <h2 className="mt-4 text-3xl font-semibold">Milimani</h2>
+                  <p className="mt-2 text-slate-200">Modern apartments and secure family homes near schools, shopping and the lakefront.</p>
+                </div>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
