@@ -12,6 +12,9 @@
 # Create database
 createdb -U postgres kisumu_rental
 
+# Apply schema migrations
+psql -U postgres -d kisumu_rental -f database/migrations/001_init.sql
+
 # Or using Docker
 docker run --name kisumu-db \
   -e POSTGRES_PASSWORD=password \

@@ -6,6 +6,23 @@ export interface User {
   full_name: string;
   phone: string;
   user_type: UserType;
+  profile_picture: string;
+  bio: string;
+  languages: string;
+  preferred_locations: string;
+  preferred_property_types: string;
+  move_in_date?: string;
+  pets: string;
+  smoking_preference: string;
+  rental_history: string;
+  references: string;
+  verification_status: string;
+  email_verified: boolean;
+  phone_verified: boolean;
+  identity_verified: boolean;
+  verification_badge: boolean;
+  profile_completed: boolean;
+  joined_date: string;
   created_at: string;
   updated_at: string;
 }
@@ -18,14 +35,39 @@ export interface Property {
   address: string;
   area: string;
   city: string;
+  neighborhood: string;
   bedrooms: number;
   bathrooms: number;
   property_type: 'house' | 'commercial' | 'apartment';
   price_per_month: number;
   available: boolean;
+  status: 'available' | 'occupied' | 'reserved';
+  parking: boolean;
+  furnished: boolean;
+  pet_friendly: boolean;
+  internet: boolean;
+  water: boolean;
+  electricity: boolean;
+  security_features: string;
+  nearby_schools: string;
+  nearby_hospitals: string;
+  nearby_shopping: string;
+  nearby_transport: string;
+  available_date?: string;
+  property_rules: string;
   image_urls: string[];
+  video_urls: string[];
+  floor_plan_urls: string[];
   created_at: string;
   updated_at: string;
+}
+
+export interface Favorite {
+  id: number;
+  user_id: number;
+  property_id: number;
+  property?: Property;
+  created_at: string;
 }
 
 export interface Connection {

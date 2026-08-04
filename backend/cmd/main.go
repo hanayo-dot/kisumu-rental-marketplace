@@ -59,6 +59,23 @@ func main() {
 		properties.DELETE("/:id", propertyHandler.DeleteProperty)
 	}
 
+	// User profile routes
+	userHandler := handlers.NewUserHandler(db)
+	users := protected.Group("/users")
+	{
+		users.GET("/me", userHandler.GetCurrentUser)
+		users.PUT("/me", userHandler.UpdateCurrentUser)
+	}
+
+	// Favorites routes
+	favoriteHandler := handlers.NewFavoriteHandler(db)
+	favorites := protected.Group("/favorites")
+	{
+		favorites.POST("", favoriteHandler.AddFavorite)
+		favorites.GET("", favoriteHandler.ListFavorites)
+		favorites.DELETE("/:property_id", favoriteHandler.RemoveFavorite)
+	}
+
 	// Connection routes
 	connectionHandler := handlers.NewConnectionHandler(db)
 	connections := protected.Group("/connections")
@@ -66,6 +83,7 @@ func main() {
 		connections.POST("", connectionHandler.CreateConnection)
 		connections.GET("", connectionHandler.ListConnections)
 		connections.PUT("/:id/verify", connectionHandler.VerifyConnection)
+		connections.POST("/:id/pay", connectionHandler.PayConnection)
 	}
 
 	// Public routes

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { propertyService, connectionService } from '../services/api';
+import { propertyService, connectionService, favoriteService } from '../services/api';
 import type { Property, Connection } from '../types';
 import Navbar from '../components/Navbar';
 
@@ -10,6 +10,7 @@ export default function Search() {
   const { user } = useAuth();
   const [properties, setProperties] = useState<Property[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
+  const [favoriteIds, setFavoriteIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<'search' | 'connections'>('search');
@@ -43,6 +44,15 @@ export default function Search() {
     }
   }, []);
 
+  const loadFavorites = useCallback(async () => {
+    try {
+      const favorites = await favoriteService.list();
+      setFavoriteIds(favorites.map((favorite) => favorite.property_id));
+    } catch {
+      // ignore favorites load failure for search page
+    }
+  }, []);
+
   useEffect(() => {
     if (!user) {
       navigate('/login');
@@ -54,8 +64,9 @@ export default function Search() {
     } else {
       loadInitialData();
       loadConnections();
+      loadFavorites();
     }
-  }, [user, navigate, loadInitialData, loadConnections]);
+  }, [user, navigate, loadInitialData, loadConnections, loadFavorites]);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,6 +95,26 @@ export default function Search() {
       loadConnections();
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to send connection request');
+    }
+  };
+
+  const handlePayConnection = async (connectionId: number) => {
+    try {
+      await connectionService.pay(connectionId);
+      alert('Payment completed successfully.');
+      loadConnections();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Payment failed');
+    }
+  };
+
+  const handleToggleFavorite = async (propertyId: number) => {
+    try {
+      await favoriteService.add(propertyId);
+      setFavoriteIds((prev) => [...new Set([...prev, propertyId])]);
+      alert('Saved to favorites');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to save favorite');
     }
   };
 
@@ -212,11 +243,12 @@ export default function Search() {
                         <span className="capitalize">{property.property_type}</span>
                       </div>
 
-                      <div className="flex justify-between items-center">
+                      <div className="flex justify-between items-center gap-3">
                         <span className="text-xl font-bold text-indigo-600">
                           KSh. {property.price_per_month.toLocaleString()}/mo
                         </span>
-                        <div className="flex gap-2">
+                      </div>
+                      <div className="mt-4 flex flex-col gap-3 sm:flex-row">
                         <Link
                           to={`/property/${property.id}`}
                           className="flex-1 rounded-lg border border-indigo-600 px-3 py-2 text-center text-sm font-semibold text-indigo-700 hover:bg-indigo-50"
@@ -229,7 +261,13 @@ export default function Search() {
                         >
                           Connect
                         </button>
-                      </div>
+                        <button
+                          onClick={() => handleToggleFavorite(property.id)}
+                          disabled={favoriteIds.includes(property.id)}
+                          className={`flex-1 px-4 py-2 rounded text-sm font-semibold ${favoriteIds.includes(property.id) ? 'bg-slate-300 text-slate-700' : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'}`}
+                        >
+                          {favoriteIds.includes(property.id) ? 'Saved' : 'Save'}
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -251,6 +289,7 @@ export default function Search() {
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Property</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Landlord Info</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Status</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Payment</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Landlord Note</th>
                 </tr>
               </thead>
@@ -275,6 +314,17 @@ export default function Search() {
                         }`}>
                           {conn.status}
                         </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900">
+                        <div>{`KSh. ${conn.payment_amount} (${conn.payment_status})`}</div>
+                        {conn.status === 'successful' && conn.payment_status !== 'paid' && (
+                          <button
+                            onClick={() => handlePayConnection(conn.id)}
+                            className="mt-2 inline-flex items-center justify-center rounded-full bg-indigo-600 px-3 py-1 text-xs font-semibold text-white hover:bg-indigo-700"
+                          >
+                            Pay now
+                          </button>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">
                         {conn.landlord_note || 'No note added'}

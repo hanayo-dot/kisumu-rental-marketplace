@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"database/sql"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -195,4 +196,73 @@ func (h *ConnectionHandler) VerifyConnection(c *gin.Context) {
 		"status":         req.Status,
 		"payment_status": paymentStatus,
 	})
+}
+
+// PayConnection marks a successful connection as paid by the tenant.
+func (h *ConnectionHandler) PayConnection(c *gin.Context) {
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	connID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid connection id"})
+		return
+	}
+
+	var tenantID int
+	var paymentStatus string
+	var paymentAmount float64
+	var connectionStatus string
+	err = h.db.QueryRow(
+		"SELECT tenant_id, payment_status, payment_amount, status FROM connections WHERE id = $1",
+		connID,
+	).Scan(&tenantID, &paymentStatus, &paymentAmount, &connectionStatus)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusNotFound, gin.H{"error": "connection not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load connection"})
+		return
+	}
+
+	if tenantID != userID.(int) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	if connectionStatus != "successful" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "payment can only be made after the landlord confirms a successful connection"})
+		return
+	}
+
+	if paymentStatus == "paid" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "payment already completed"})
+		return
+	}
+
+	reference := fmt.Sprintf("connection-%d-payment", connID)
+	_, err = h.db.Exec(
+		`INSERT INTO payments (user_id, amount, currency, provider, method, status, reference, metadata)
+		 VALUES ($1, $2, 'KES', 'local', 'direct', 'completed', $3, '{}'::jsonb)`,
+		userID.(int), paymentAmount, reference,
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to record payment"})
+		return
+	}
+
+	_, err = h.db.Exec(
+		"UPDATE connections SET payment_status = 'paid', updated_at = NOW() WHERE id = $1",
+		connID,
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update connection payment status"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "payment completed", "payment_status": "paid"})
 }

@@ -61,6 +61,9 @@ Runs on `http://localhost:5173`
 # Create database
 createdb kisumu_rental
 
+# Apply schema migrations
+psql kisumu_rental < database/migrations/001_init.sql
+
 # Connection string in .env
 DATABASE_URL=postgres://postgres:password@localhost:5432/kisumu_rental?sslmode=disable
 ```
@@ -77,8 +80,18 @@ DATABASE_URL=postgres://postgres:password@localhost:5432/kisumu_rental?sslmode=d
 **Properties:**
 - `POST /api/properties` - Create property (landlord)
 - `GET /api/properties` - List landlord's properties
+- `GET /api/properties/:id` - Get property details
 - `PUT /api/properties/:id` - Update property
 - `DELETE /api/properties/:id` - Delete property
+
+**Users:**
+- `GET /api/users/me` - Get current user profile
+- `PUT /api/users/me` - Update current user profile
+
+**Favorites:**
+- `POST /api/favorites` - Save a property as favorite
+- `GET /api/favorites` - List favorite properties
+- `DELETE /api/favorites/:property_id` - Remove favorite property
 
 **Connections:**
 - `POST /api/connections` - Create connection (tenant inquiry)

@@ -1,4 +1,4 @@
-import type { AuthResponse, RegisterRequest, LoginRequest, Property, Connection } from '../types';
+import type { AuthResponse, RegisterRequest, LoginRequest, Property, Connection, Favorite, User } from '../types';
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8080/api').replace(/\/$/, '');
 
@@ -135,5 +135,57 @@ export const connectionService = {
       body: JSON.stringify({ status, landlord_note: note }),
     });
     await handleResponse<{ message: string }>(response, 'Failed to verify connection');
+  },
+
+  pay: async (connectionId: number): Promise<void> => {
+    const response = await fetch(`${API_BASE_URL}/connections/${connectionId}/pay`, {
+      method: 'POST',
+      headers: getHeaders(),
+    });
+    await handleResponse<{ message: string }>(response, 'Failed to process payment');
+  },
+};
+
+export const userService = {
+  getMe: async (): Promise<User> => {
+    const response = await fetch(`${API_BASE_URL}/users/me`, {
+      headers: getHeaders(),
+    });
+    return handleResponse<User>(response, 'Failed to fetch profile');
+  },
+
+  updateProfile: async (data: Partial<User>): Promise<User> => {
+    const response = await fetch(`${API_BASE_URL}/users/me`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify(data),
+    });
+    return handleResponse<User>(response, 'Failed to update profile');
+  },
+};
+
+export const favoriteService = {
+  add: async (propertyId: number): Promise<void> => {
+    const response = await fetch(`${API_BASE_URL}/favorites`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ property_id: propertyId }),
+    });
+    await handleResponse<{ message: string }>(response, 'Failed to add favorite');
+  },
+
+  list: async (): Promise<Favorite[]> => {
+    const response = await fetch(`${API_BASE_URL}/favorites`, {
+      headers: getHeaders(),
+    });
+    return handleResponse<Favorite[]>(response, 'Failed to fetch favorites');
+  },
+
+  remove: async (propertyId: number): Promise<void> => {
+    const response = await fetch(`${API_BASE_URL}/favorites/${propertyId}`, {
+      method: 'DELETE',
+      headers: getHeaders(),
+    });
+    await handleResponse<{ message: string }>(response, 'Failed to remove favorite');
   },
 };

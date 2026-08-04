@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { propertyService, connectionService } from '../services/api';
+import { propertyService, connectionService, favoriteService } from '../services/api';
 import type { Property } from '../types';
 import Navbar from '../components/Navbar';
 
@@ -13,6 +13,7 @@ export default function PropertyDetails() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [requesting, setRequesting] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -48,6 +49,17 @@ export default function PropertyDetails() {
       setError(err instanceof Error ? err.message : 'Failed to request connection');
     } finally {
       setRequesting(false);
+    }
+  };
+
+  const handleSaveFavorite = async () => {
+    if (!property) return;
+    try {
+      await favoriteService.add(property.id);
+      setSaved(true);
+      alert('Saved to favorites');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save favorite');
     }
   };
 
@@ -129,13 +141,22 @@ export default function PropertyDetails() {
                 <h3 className="text-lg font-semibold text-slate-900">Tenant actions</h3>
                 <p className="mt-3 text-slate-600">Request a connection, book a viewing, and stay in touch with the landlord.</p>
                 {user?.user_type === 'tenant' ? (
-                  <button
-                    onClick={handleConnect}
-                    disabled={requesting || !property.available}
-                    className="mt-6 w-full rounded-full bg-indigo-600 px-5 py-3 text-sm font-semibold text-white hover:bg-indigo-700 disabled:bg-slate-400"
-                  >
-                    {requesting ? 'Requesting...' : property.available ? 'Request Connection' : 'Not Available'}
-                  </button>
+                  <div className="space-y-3">
+                    <button
+                      onClick={handleConnect}
+                      disabled={requesting || !property.available}
+                      className="mt-6 w-full rounded-full bg-indigo-600 px-5 py-3 text-sm font-semibold text-white hover:bg-indigo-700 disabled:bg-slate-400"
+                    >
+                      {requesting ? 'Requesting...' : property.available ? 'Request Connection' : 'Not Available'}
+                    </button>
+                    <button
+                      onClick={handleSaveFavorite}
+                      disabled={saved}
+                      className={`w-full rounded-full px-5 py-3 text-sm font-semibold ${saved ? 'bg-slate-300 text-slate-700' : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-100'}`}
+                    >
+                      {saved ? 'Saved' : 'Save to Favorites'}
+                    </button>
+                  </div>
                 ) : (
                   <div className="mt-6 rounded-3xl bg-slate-50 p-4 text-sm text-slate-600">
                     Landlords can manage tenant inquiries from the dashboard.

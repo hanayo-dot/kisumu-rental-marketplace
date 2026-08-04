@@ -18,6 +18,9 @@ export default function Navbar() {
               <Link className={`${location.pathname === '/search' ? 'text-indigo-600 font-semibold' : 'hover:text-indigo-700'}`} to="/search">
                 Search
               </Link>
+              <Link className={`${location.pathname === '/favorites' ? 'text-indigo-600 font-semibold' : 'hover:text-indigo-700'}`} to="/favorites">
+                Favorites
+              </Link>
               <Link className={`${location.pathname === '/profile' ? 'text-indigo-600 font-semibold' : 'hover:text-indigo-700'}`} to="/profile">
                 Profile
               </Link>
