@@ -3,10 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { propertyService, connectionService } from '../services/api';
 import type { Property, Connection } from '../types';
+import Navbar from '../components/Navbar';
 
 export default function LandlordDashboard() {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [properties, setProperties] = useState<Property[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [loading, setLoading] = useState(false);
@@ -24,7 +25,7 @@ export default function LandlordDashboard() {
     price_per_month: 0,
     image_urls: [],
   });
-  const [imageUrlInput, setImageUrlInput] = useState('');
+  const [previewImages, setPreviewImages] = useState<string[]>([]);
 
   useEffect(() => {
     if (!user) {
@@ -76,7 +77,7 @@ export default function LandlordDashboard() {
         price_per_month: 0,
         image_urls: [],
       });
-      setImageUrlInput('');
+      setPreviewImages([]);
       alert('Property listed successfully!');
       loadProperties();
     } catch (err) {
@@ -84,6 +85,29 @@ export default function LandlordDashboard() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleImageSelect = (files: FileList | null) => {
+    if (!files) return;
+
+    const readers = Array.from(files).map((file) => {
+      return new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.readAsDataURL(file);
+      });
+    });
+
+    Promise.all(readers)
+      .then((urls) => {
+        const existing = newProperty.image_urls || [];
+        setNewProperty({ ...newProperty, image_urls: [...existing, ...urls] });
+        setPreviewImages((prev) => [...prev, ...urls]);
+      })
+      .catch(() => {
+        setError('Failed to read selected photos');
+      });
   };
 
   const handleVerifyConnection = async (connectionId: number, status: string) => {
@@ -129,20 +153,7 @@ export default function LandlordDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-indigo-600">Landlord Dashboard</h1>
-          <div className="space-x-4">
-            <span className="text-gray-700">Welcome, {user?.full_name}</span>
-            <button
-              onClick={logout}
-              className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-            >
-              Logout
-            </button>
-          </div>
-        </div>
-      </nav>
+      <Navbar />
 
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex gap-4 mb-6">
@@ -334,33 +345,30 @@ export default function LandlordDashboard() {
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700">Image URL</label>
-                  <div className="mt-1 flex gap-2">
-                    <input
-                      type="url"
-                      value={imageUrlInput}
-                      onChange={(e) => setImageUrlInput(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                      placeholder="https://example.com/image.jpg"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!imageUrlInput) return;
-                        const nextImages = [...(newProperty.image_urls || []), imageUrlInput];
-                        setNewProperty({ ...newProperty, image_urls: nextImages });
-                        setImageUrlInput('');
-                      }}
-                      className="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700"
-                    >
-                      Add
-                    </button>
-                  </div>
-                  {newProperty.image_urls && newProperty.image_urls.length > 0 && (
-                    <div className="mt-3 grid grid-cols-2 gap-2">
-                      {newProperty.image_urls.map((url, index) => (
-                        <div key={index} className="rounded-lg overflow-hidden border border-gray-200">
-                          <img src={url} alt={`Property ${index + 1}`} className="h-24 w-full object-cover" />
+                  <label className="block text-sm font-medium text-gray-700">Description</label>
+                  <textarea
+                    value={newProperty.description}
+                    onChange={(e) => setNewProperty({ ...newProperty, description: e.target.value })}
+                    rows={4}
+                    placeholder="Write a short description for tenants"
+                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700">Photos</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={(e) => handleImageSelect(e.target.files)}
+                    className="mt-1 w-full text-sm text-gray-700"
+                  />
+                  {previewImages.length > 0 && (
+                    <div className="mt-4 grid grid-cols-2 gap-2">
+                      {previewImages.map((src, index) => (
+                        <div key={index} className="relative overflow-hidden rounded-lg border border-gray-200">
+                          <img src={src} alt={`Preview ${index + 1}`} className="h-24 w-full object-cover" />
                         </div>
                       ))}
                     </div>
@@ -380,7 +388,7 @@ export default function LandlordDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {properties.length > 0 ? (
                 properties.map((property) => (
-                  <div key={property.id} className="bg-white rounded-lg shadow overflow-hidden">
+                  <div key={property.id} className="bg-white rounded-lg shadow overflow-hidden transition duration-300 ease-out motion-safe:animate-pop-in hover:-translate-y-1 hover:shadow-2xl">
                     {property.image_urls && property.image_urls.length > 0 && (
                       <img
                         src={property.image_urls[0]}

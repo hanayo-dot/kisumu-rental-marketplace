@@ -4,6 +4,9 @@ import Register from './pages/Register';
 import Login from './pages/Login';
 import Search from './pages/Search';
 import LandlordDashboard from './pages/LandlordDashboard';
+import Landing from './pages/Landing';
+import Profile from './pages/Profile';
+import PropertyDetails from './pages/PropertyDetails';
 import './index.css';
 
 function App() {
@@ -11,11 +14,14 @@ function App() {
     <Router>
       <AuthProvider>
         <Routes>
-          <Route path="/" element={<Navigate to="/login" />} />
+          <Route path="/" element={<Landing />} />
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
           <Route path="/search" element={<Search />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/property/:id" element={<PropertyDetails />} />
           <Route path="/landlord/dashboard" element={<LandlordDashboard />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>
     </Router>

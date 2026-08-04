@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { propertyService, connectionService } from '../services/api';
 import type { Property, Connection } from '../types';
+import Navbar from '../components/Navbar';
 
 export default function Search() {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [properties, setProperties] = useState<Property[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [loading, setLoading] = useState(false);
@@ -88,22 +89,13 @@ export default function Search() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-indigo-600">Kisumu Rentals</h1>
-          <div className="space-x-4">
-            <span className="text-gray-700">Welcome, {user?.full_name}</span>
-            <button
-              onClick={logout}
-              className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 font-semibold"
-            >
-              Logout
-            </button>
-          </div>
-        </div>
-      </nav>
+      <Navbar />
 
       <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="rounded-3xl bg-indigo-600 p-8 text-white shadow-xl mb-8 motion-safe:animate-fade-in">
+          <h1 className="text-3xl font-bold">Search Rentals in Kisumu</h1>
+          <p className="mt-3 max-w-2xl text-slate-100">Use filters to narrow down the best homes, apartments and commercial spaces available now.</p>
+        </div>
         <div className="flex gap-4 mb-6">
           <button
             onClick={() => setActiveTab('search')}
@@ -201,7 +193,7 @@ export default function Search() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {properties.length > 0 ? (
                 properties.map((property) => (
-                  <div key={property.id} className="bg-white rounded-lg shadow hover:shadow-lg transition">
+                  <div key={property.id} className="bg-white rounded-lg shadow hover:shadow-lg transition duration-300 ease-out motion-safe:animate-pop-in hover:-translate-y-1 hover:shadow-2xl">
                     {property.image_urls && property.image_urls.length > 0 && (
                       <img
                         src={property.image_urls[0]}
@@ -224,12 +216,20 @@ export default function Search() {
                         <span className="text-xl font-bold text-indigo-600">
                           KSh. {property.price_per_month.toLocaleString()}/mo
                         </span>
+                        <div className="flex gap-2">
+                        <Link
+                          to={`/property/${property.id}`}
+                          className="flex-1 rounded-lg border border-indigo-600 px-3 py-2 text-center text-sm font-semibold text-indigo-700 hover:bg-indigo-50"
+                        >
+                          Details
+                        </Link>
                         <button
                           onClick={() => handleConnect(property.id)}
-                          className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-sm font-semibold"
+                          className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-sm font-semibold"
                         >
                           Connect
                         </button>
+                      </div>
                       </div>
                     </div>
                   </div>

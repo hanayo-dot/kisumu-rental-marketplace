@@ -5,7 +5,6 @@
 :root {
   color-scheme: light;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: #f8fafc;
   color: #111827;
 }
 
@@ -22,4 +21,49 @@ body,
 body {
   margin: 0;
   padding: 0;
+  background-image: radial-gradient(circle at top left, rgba(99,102,241,0.18), transparent 22%),
+    radial-gradient(circle at bottom right, rgba(14,165,233,0.14), transparent 22%),
+    linear-gradient(180deg, #eef2ff 0%, #f8fafc 40%, #ffffff 100%);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+@layer utilities {
+  .animate-fade-in {
+    animation: fade-in 0.9s ease-out both;
+  }
+  .animate-pop-in {
+    animation: pop-in 0.45s ease-out both;
+  }
+  .bg-hero-gradient {
+    background-image: radial-gradient(circle at top left, rgba(99,102,241,0.18), transparent 25%),
+      radial-gradient(circle at bottom right, rgba(14,165,233,0.18), transparent 24%),
+      linear-gradient(180deg, rgba(255,255,255,0.95), rgba(241,245,249,0.9));
+  }
+  .font-smooth {
+    font-smoothing: antialiased;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
