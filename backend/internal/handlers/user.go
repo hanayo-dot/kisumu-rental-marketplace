@@ -29,7 +29,7 @@ func (h *UserHandler) GetCurrentUser(c *gin.Context) {
 	var user models.User
 	var moveInDate sql.NullTime
 	err := h.db.QueryRow(
-		`SELECT id, email, full_name, COALESCE(phone, ''), user_type, COALESCE(profile_picture, ''), COALESCE(bio, ''), COALESCE(languages, ''), COALESCE(preferred_locations, ''), COALESCE(preferred_property_types, ''), move_in_date, COALESCE(pets, ''), COALESCE(smoking_preference, ''), COALESCE(rental_history, ''), COALESCE(references, ''), verification_status, email_verified, phone_verified, identity_verified, verification_badge, profile_completed, joined_date, created_at, updated_at FROM users WHERE id = $1`,
+		`SELECT id, email, full_name, COALESCE(phone, ''), user_type, COALESCE(profile_picture, ''), COALESCE(bio, ''), COALESCE(languages, ''), COALESCE(preferred_locations, ''), COALESCE(preferred_property_types, ''), move_in_date, COALESCE(pets, ''), COALESCE(smoking_preference, ''), COALESCE(rental_history, ''), COALESCE("references", ''), verification_status, email_verified, phone_verified, identity_verified, verification_badge, profile_completed, joined_date, created_at, updated_at FROM users WHERE id = $1`,
 		userID.(int),
 	).Scan(
 		&user.ID,

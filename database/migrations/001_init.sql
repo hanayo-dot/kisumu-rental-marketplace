@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS users (
   pets TEXT,
   smoking_preference VARCHAR(50),
   rental_history TEXT,
-  references TEXT,
+  "references" TEXT,
   verification_status VARCHAR(50) NOT NULL DEFAULT 'unverified' CHECK (verification_status IN ('unverified', 'pending', 'verified', 'flagged')),
   email_verified BOOLEAN DEFAULT FALSE,
   phone_verified BOOLEAN DEFAULT FALSE,
@@ -99,7 +99,7 @@ CREATE TABLE IF NOT EXISTS applications (
   status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'withdrawn')),
   move_in_date DATE,
   notes TEXT,
-  references TEXT,
+  "references" TEXT,
   rental_history TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
