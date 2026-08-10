@@ -23,6 +23,8 @@ export default function LandlordDashboard() {
     bathrooms: 0,
     property_type: 'house',
     price_per_month: 0,
+    available: true,
+    status: 'available',
     image_urls: [],
   });
   const [previewImages, setPreviewImages] = useState<string[]>([]);
@@ -75,6 +77,8 @@ export default function LandlordDashboard() {
         bathrooms: 0,
         property_type: 'house',
         price_per_month: 0,
+        available: true,
+        status: 'available',
         image_urls: [],
       });
       setPreviewImages([]);

@@ -138,6 +138,10 @@ func (h *PropertyHandler) CreateProperty(c *gin.Context) {
 		return
 	}
 
+	if strings.TrimSpace(req.Status) == "" {
+		req.Status = "available"
+	}
+
 	if req.ImageURLs == nil {
 		req.ImageURLs = []string{}
 	}
