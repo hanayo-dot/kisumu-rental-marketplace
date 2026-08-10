@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"database/sql"
+	"log"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -187,9 +188,13 @@ func (h *PropertyHandler) CreateProperty(c *gin.Context) {
 	).Scan(&property.ID, &property.LandlordID, &property.Title, &property.Description, &property.Address, &property.Area, &property.City, &property.Neighborhood, &property.Bedrooms, &property.Bathrooms, &property.PropertyType, &property.PricePerMonth, &property.Available, &property.Status, &property.Parking, &property.Furnished, &property.PetFriendly, &property.Internet, &property.Water, &property.Electricity, &property.SecurityFeatures, &property.NearbySchools, &property.NearbyHospitals, &property.NearbyShopping, &property.NearbyTransport, &property.AvailableDate, &property.PropertyRules, pq.Array(&property.ImageURLs), pq.Array(&property.VideoURLs), pq.Array(&property.FloorPlanURLs), &property.CreatedAt, &property.UpdatedAt)
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create property"})
-		return
-	}
+    log.Printf("CREATE PROPERTY ERROR: %v", err)
+    c.JSON(http.StatusInternalServerError, gin.H{
+        "error": "failed to create property",
+        "details": err.Error(),
+    })
+    return
+}
 
 	if property.ImageURLs == nil {
 		property.ImageURLs = []string{}
