@@ -39,6 +39,17 @@ func main() {
 	// Middleware
 	router.Use(middleware.CORSMiddleware())
 
+	// Health Check & Root routes for Render deployment
+	router.GET("/", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"status":  "ok",
+			"service": "Kisumu Rental Marketplace API",
+		})
+	})
+	router.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{"status": "healthy"})
+	})
+
 	// Auth routes
 	authHandler := handlers.NewAuthHandler(db)
 	auth := router.Group("/api/auth")
