@@ -27,6 +27,8 @@ services:
       DATABASE_URL: postgres://postgres:password@db:5432/kisumu_rental?sslmode=disable
       PORT: 8080
       JWT_SECRET: your-secret-key-change-in-production
+    volumes:
+      - ./backend/uploads:/root/uploads
     depends_on:
       db:
         condition: service_healthy

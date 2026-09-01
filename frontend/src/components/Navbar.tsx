@@ -1,5 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { IconHome, IconSearch, IconHeart, IconUser, IconDashboard, IconLogout } from './Icons';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -7,26 +8,65 @@ export default function Navbar() {
   const location = useLocation();
 
   return (
-    <header className="bg-white shadow-sm border-b border-slate-200">
+    <header className="sticky top-0 z-50 glass-header">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          <div className="flex items-center gap-4">
-            <Link to="/" className="text-xl font-bold text-indigo-600 hover:text-indigo-700">
-              Kisumu Rentals
+          <div className="flex items-center gap-6">
+            <Link to="/" className="flex items-center gap-2 text-xl font-extrabold text-white tracking-wide">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-500 to-sky-400 text-white shadow-lg shadow-indigo-500/30">
+                <IconHome className="w-5 h-5" />
+              </div>
+              <span>Kisumu<span className="text-indigo-400 font-normal">Rentals</span></span>
             </Link>
-            <nav className="hidden md:flex items-center gap-3 text-sm text-slate-700">
-              <Link className={`${location.pathname === '/search' ? 'text-indigo-600 font-semibold' : 'hover:text-indigo-700'}`} to="/search">
-                Search
+
+            <nav className="hidden md:flex items-center gap-2 text-sm">
+              <Link
+                to="/search"
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-medium transition ${
+                  location.pathname === '/search'
+                    ? 'bg-indigo-600/30 text-indigo-300 border border-indigo-500/30'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-800/50'
+                }`}
+              >
+                <IconSearch className="w-4 h-4" />
+                <span>Search</span>
               </Link>
-              <Link className={`${location.pathname === '/favorites' ? 'text-indigo-600 font-semibold' : 'hover:text-indigo-700'}`} to="/favorites">
-                Favorites
+
+              <Link
+                to="/favorites"
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-medium transition ${
+                  location.pathname === '/favorites'
+                    ? 'bg-indigo-600/30 text-indigo-300 border border-indigo-500/30'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-800/50'
+                }`}
+              >
+                <IconHeart className="w-4 h-4" />
+                <span>Favorites</span>
               </Link>
-              <Link className={`${location.pathname === '/profile' ? 'text-indigo-600 font-semibold' : 'hover:text-indigo-700'}`} to="/profile">
-                Profile
+
+              <Link
+                to="/profile"
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-medium transition ${
+                  location.pathname === '/profile'
+                    ? 'bg-indigo-600/30 text-indigo-300 border border-indigo-500/30'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-800/50'
+                }`}
+              >
+                <IconUser className="w-4 h-4" />
+                <span>Profile</span>
               </Link>
+
               {user?.user_type === 'landlord' && (
-                <Link className={`${location.pathname === '/landlord/dashboard' ? 'text-indigo-600 font-semibold' : 'hover:text-indigo-700'}`} to="/landlord/dashboard">
-                  Dashboard
+                <Link
+                  to="/landlord/dashboard"
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl font-medium transition ${
+                    location.pathname === '/landlord/dashboard'
+                      ? 'bg-indigo-600/30 text-indigo-300 border border-indigo-500/30'
+                      : 'text-slate-300 hover:text-white hover:bg-slate-800/50'
+                  }`}
+                >
+                  <IconDashboard className="w-4 h-4" />
+                  <span>Dashboard</span>
                 </Link>
               )}
             </nav>
@@ -35,28 +75,31 @@ export default function Navbar() {
           <div className="flex items-center gap-3">
             {user ? (
               <>
-                <span className="hidden sm:inline text-sm text-slate-600">Hi, {user.full_name}</span>
+                <span className="hidden sm:inline text-xs text-slate-300 bg-slate-800/60 border border-slate-700/60 px-3 py-1.5 rounded-full">
+                  Hi, <strong className="text-white">{user.full_name}</strong> ({user.user_type})
+                </span>
                 <button
                   onClick={() => {
                     logout();
                     navigate('/');
                   }}
-                  className="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-700/80 bg-slate-800/60 px-3.5 py-2 text-xs font-semibold text-slate-200 shadow-sm hover:bg-slate-700/80 hover:text-white transition"
                 >
-                  Logout
+                  <IconLogout className="w-4 h-4" />
+                  <span>Logout</span>
                 </button>
               </>
             ) : (
               <>
                 <Link
                   to="/login"
-                  className="inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-semibold text-slate-700 hover:text-indigo-700"
+                  className="inline-flex items-center justify-center rounded-xl px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800/50 transition"
                 >
                   Login
                 </Link>
                 <Link
                   to="/register"
-                  className="inline-flex items-center justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700"
+                  className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-indigo-600/30 hover:bg-indigo-500 transition"
                 >
                   Register
                 </Link>

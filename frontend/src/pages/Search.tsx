@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { propertyService, connectionService, favoriteService } from '../services/api';
+import { propertyService, connectionService, favoriteService, getFullImageUrl } from '../services/api';
 import type { Property, Connection } from '../types';
 import Navbar from '../components/Navbar';
+import { IconSearch, IconHeart, IconBed, IconBath, IconMapPin, IconZap, IconCheck } from '../components/Icons';
 
 export default function Search() {
   const navigate = useNavigate();
@@ -49,7 +50,7 @@ export default function Search() {
       const favorites = await favoriteService.list();
       setFavoriteIds(favorites.map((favorite) => favorite.property_id));
     } catch {
-      // ignore favorites load failure for search page
+      // ignore favorites load failure
     }
   }, []);
 
@@ -91,7 +92,7 @@ export default function Search() {
   const handleConnect = async (propertyId: number) => {
     try {
       await connectionService.create(propertyId);
-      alert('Connection request sent! The landlord will review and respond to your request.');
+      alert('Connection request sent! The landlord will review and respond.');
       loadConnections();
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to send connection request');
@@ -112,100 +113,105 @@ export default function Search() {
     try {
       await favoriteService.add(propertyId);
       setFavoriteIds((prev) => [...new Set([...prev, propertyId])]);
-      alert('Saved to favorites');
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to save favorite');
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen text-slate-100 font-smooth">
       <Navbar />
 
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="rounded-3xl bg-indigo-600 p-8 text-white shadow-xl mb-8 motion-safe:animate-fade-in">
-          <h1 className="text-3xl font-bold">Search Rentals in Kisumu</h1>
-          <p className="mt-3 max-w-2xl text-slate-100">Use filters to narrow down the best homes, apartments and commercial spaces available now.</p>
+      <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+        <div className="glass-dark-card rounded-3xl p-8 mb-8">
+          <h1 className="text-3xl font-extrabold text-white">Search Rental Homes in Kisumu</h1>
+          <p className="mt-2 text-sm text-slate-300 max-w-2xl">
+            Filter curated houses, apartments, and commercial spaces across Milimani, Riat Hills, Uzima, and Kisumu Central.
+          </p>
         </div>
-        <div className="flex gap-4 mb-6">
+
+        <div className="flex gap-3 mb-6">
           <button
             onClick={() => setActiveTab('search')}
-            className={`px-6 py-2 rounded font-semibold ${
+            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-semibold text-sm transition ${
               activeTab === 'search'
-                ? 'bg-indigo-600 text-white'
-                : 'bg-white text-gray-700 border border-gray-300'
+                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
+                : 'glass-card text-slate-300 hover:text-white'
             }`}
           >
-            Find Properties
+            <IconSearch className="w-4 h-4" />
+            <span>Find Properties</span>
           </button>
+
           <button
             onClick={() => setActiveTab('connections')}
-            className={`px-6 py-2 rounded font-semibold ${
+            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-semibold text-sm transition ${
               activeTab === 'connections'
-                ? 'bg-indigo-600 text-white'
-                : 'bg-white text-gray-700 border border-gray-300'
+                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
+                : 'glass-card text-slate-300 hover:text-white'
             }`}
           >
-            My Inquiries ({connections.length})
+            <IconZap className="w-4 h-4" />
+            <span>My Inquiries ({connections.length})</span>
           </button>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
+          <div className="mb-6 p-4 bg-red-900/60 border border-red-500/40 text-red-200 rounded-2xl backdrop-blur-md text-sm">
             {error}
           </div>
         )}
 
         {activeTab === 'search' && (
           <>
-            <div className="bg-white rounded-lg shadow p-6 mb-8">
-              <h2 className="text-xl font-bold mb-4">Search Properties in Kisumu</h2>
+            <div className="glass-dark-card rounded-3xl p-6 mb-8">
+              <h2 className="text-lg font-bold text-white mb-4">Filter Properties</h2>
               
-              <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              <form onSubmit={handleSearch} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Area</label>
+                  <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Area</label>
                   <input
                     type="text"
-                    placeholder="e.g., Kisumu Central"
+                    placeholder="e.g., Milimani"
                     value={filters.area}
                     onChange={(e) => setFilters({ ...filters, area: e.target.value })}
-                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3.5 py-2.5 bg-slate-950/60 border border-slate-700/80 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Min Price (KSh)</label>
+                  <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Min Price (KSh)</label>
                   <input
                     type="number"
                     placeholder="5000"
                     value={filters.minPrice}
                     onChange={(e) => setFilters({ ...filters, minPrice: e.target.value })}
-                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3.5 py-2.5 bg-slate-950/60 border border-slate-700/80 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Max Price (KSh)</label>
+                  <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Max Price (KSh)</label>
                   <input
                     type="number"
                     placeholder="50000"
                     value={filters.maxPrice}
                     onChange={(e) => setFilters({ ...filters, maxPrice: e.target.value })}
-                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3.5 py-2.5 bg-slate-950/60 border border-slate-700/80 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Type</label>
+                  <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Type</label>
                   <select
                     value={filters.type}
                     onChange={(e) => setFilters({ ...filters, type: e.target.value })}
-                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3.5 py-2.5 bg-slate-950/60 border border-slate-700/80 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500"
                   >
-                    <option value="">All Types</option>
-                    <option value="house">House</option>
-                    <option value="apartment">Apartment</option>
-                    <option value="commercial">Commercial</option>
+                    <option value="" className="bg-slate-900 text-white">All Types</option>
+                    <option value="house" className="bg-slate-900 text-white">House</option>
+                    <option value="apartment" className="bg-slate-900 text-white">Apartment</option>
+                    <option value="commercial" className="bg-slate-900 text-white">Commercial</option>
                   </select>
                 </div>
 
@@ -213,9 +219,10 @@ export default function Search() {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-indigo-600 text-white font-semibold py-2 rounded-lg hover:bg-indigo-700 disabled:bg-gray-400"
+                    className="w-full flex items-center justify-center gap-2 bg-indigo-600 text-white font-semibold py-2.5 rounded-xl hover:bg-indigo-500 transition shadow-lg shadow-indigo-600/30 disabled:bg-slate-700"
                   >
-                    {loading ? 'Searching...' : 'Search'}
+                    <IconSearch className="w-4 h-4" />
+                    <span>{loading ? 'Searching...' : 'Apply Filter'}</span>
                   </button>
                 </div>
               </form>
@@ -224,57 +231,73 @@ export default function Search() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {properties.length > 0 ? (
                 properties.map((property) => (
-                  <div key={property.id} className="bg-white rounded-lg shadow hover:shadow-lg transition duration-300 ease-out motion-safe:animate-pop-in hover:-translate-y-1 hover:shadow-2xl">
-                    {property.image_urls && property.image_urls.length > 0 && (
+                  <div key={property.id} className="glass-card rounded-3xl overflow-hidden transition-all duration-300 hover:-translate-y-1.5 hover:border-indigo-500/40">
+                    {property.image_urls && property.image_urls.length > 0 ? (
                       <img
-                        src={property.image_urls[0]}
+                        src={getFullImageUrl(property.image_urls[0])}
                         alt={property.title}
-                        className="w-full h-48 object-cover rounded-t-lg"
+                        className="w-full h-52 object-cover"
                       />
+                    ) : (
+                      <div className="h-52 bg-slate-800 flex items-center justify-center text-slate-500">No Image</div>
                     )}
-                    <div className="p-4">
-                      <h3 className="text-lg font-bold text-gray-900">{property.title}</h3>
-                      <p className="text-gray-600 text-sm">{property.address}</p>
-                      <p className="text-gray-600 text-sm mb-2">{property.area}</p>
+                    <div className="p-6">
+                      <h3 className="text-xl font-bold text-white">{property.title}</h3>
+                      <p className="text-xs text-slate-300 flex items-center gap-1 mt-1">
+                        <IconMapPin className="w-3.5 h-3.5 text-indigo-400" />
+                        {property.address}, {property.area}
+                      </p>
                       
-                      <div className="flex justify-between text-sm text-gray-700 mb-3">
-                        <span>{property.bedrooms} Beds</span>
-                        <span>{property.bathrooms} Baths</span>
-                        <span className="capitalize">{property.property_type}</span>
-                      </div>
-
-                      <div className="flex justify-between items-center gap-3">
-                        <span className="text-xl font-bold text-indigo-600">
-                          KSh. {property.price_per_month.toLocaleString()}/mo
+                      <div className="flex items-center gap-4 text-xs font-semibold text-slate-300 my-4">
+                        <span className="flex items-center gap-1">
+                          <IconBed className="w-4 h-4 text-slate-400" />
+                          {property.bedrooms} Beds
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <IconBath className="w-4 h-4 text-slate-400" />
+                          {property.bathrooms} Baths
+                        </span>
+                        <span className="capitalize px-2.5 py-0.5 rounded-full bg-slate-800 text-indigo-300 border border-slate-700">
+                          {property.property_type}
                         </span>
                       </div>
-                      <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+
+                      <div className="text-2xl font-extrabold text-white mb-4">
+                        KSh {property.price_per_month.toLocaleString()} <span className="text-xs text-slate-400 font-normal">/ mo</span>
+                      </div>
+
+                      <div className="flex gap-2">
                         <Link
                           to={`/property/${property.id}`}
-                          className="flex-1 rounded-lg border border-indigo-600 px-3 py-2 text-center text-sm font-semibold text-indigo-700 hover:bg-indigo-50"
+                          className="flex-1 text-center py-2.5 rounded-xl border border-slate-700 bg-slate-800/80 text-xs font-semibold text-slate-200 hover:bg-slate-700 transition"
                         >
                           Details
                         </Link>
                         <button
                           onClick={() => handleConnect(property.id)}
-                          className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-sm font-semibold"
+                          className="flex-1 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-semibold hover:bg-indigo-500 transition shadow-lg shadow-indigo-600/30"
                         >
                           Connect
                         </button>
                         <button
                           onClick={() => handleToggleFavorite(property.id)}
                           disabled={favoriteIds.includes(property.id)}
-                          className={`flex-1 px-4 py-2 rounded text-sm font-semibold ${favoriteIds.includes(property.id) ? 'bg-slate-300 text-slate-700' : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'}`}
+                          className={`p-2.5 rounded-xl border transition ${
+                            favoriteIds.includes(property.id)
+                              ? 'bg-rose-500/20 text-rose-400 border-rose-500/40'
+                              : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:text-white'
+                          }`}
+                          title="Save to favorites"
                         >
-                          {favoriteIds.includes(property.id) ? 'Saved' : 'Save'}
+                          <IconHeart className="w-4 h-4" filled={favoriteIds.includes(property.id)} />
                         </button>
                       </div>
                     </div>
                   </div>
                 ))
               ) : (
-                <div className="col-span-full text-center py-8 text-gray-500">
-                  {loading ? 'Loading properties...' : 'No properties found. Try adjusting your search.'}
+                <div className="col-span-full text-center py-12 text-slate-400 glass-dark-card rounded-3xl">
+                  {loading ? 'Loading rental listings...' : 'No properties match your filter.'}
                 </div>
               )}
             </div>
@@ -282,58 +305,59 @@ export default function Search() {
         )}
 
         {activeTab === 'connections' && (
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-gray-100">
+          <div className="glass-dark-card rounded-3xl overflow-hidden shadow-2xl">
+            <table className="w-full text-left">
+              <thead className="bg-slate-900/80 border-b border-slate-800">
                 <tr>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Property</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Landlord Info</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Status</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Payment</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Landlord Note</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-300 uppercase tracking-wider">Property</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-300 uppercase tracking-wider">Landlord</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-300 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-300 uppercase tracking-wider">Payment</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-300 uppercase tracking-wider">Note</th>
                 </tr>
               </thead>
-              <tbody className="divide-y">
+              <tbody className="divide-y divide-slate-800">
                 {connections.length > 0 ? (
                   connections.map((conn) => (
-                    <tr key={conn.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                    <tr key={conn.id} className="hover:bg-slate-800/40 transition">
+                      <td className="px-6 py-4 text-sm font-semibold text-white">
                         {conn.property_title || `Property #${conn.property_id}`}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        <div className="font-semibold">{conn.landlord_name || `Landlord #${conn.landlord_id}`}</div>
-                        <div className="text-xs text-gray-500">{conn.landlord_phone && `Phone: ${conn.landlord_phone}`}</div>
+                      <td className="px-6 py-4 text-xs text-slate-300">
+                        <div className="font-semibold text-white">{conn.landlord_name || `Landlord #${conn.landlord_id}`}</div>
+                        <div>{conn.landlord_phone}</div>
                       </td>
-                      <td className="px-6 py-4 text-sm">
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                      <td className="px-6 py-4 text-xs">
+                        <span className={`px-3 py-1 rounded-full font-semibold border ${
                           conn.status === 'successful'
-                            ? 'bg-green-100 text-green-800'
+                            ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/40'
                             : conn.status === 'rejected'
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-yellow-100 text-yellow-800'
+                            ? 'bg-rose-950/80 text-rose-300 border-rose-500/40'
+                            : 'bg-amber-950/80 text-amber-300 border-amber-500/40'
                         }`}>
                           {conn.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        <div>{`KSh. ${conn.payment_amount} (${conn.payment_status})`}</div>
+                      <td className="px-6 py-4 text-xs text-slate-200">
+                        <div>KSh {conn.payment_amount} ({conn.payment_status})</div>
                         {conn.status === 'successful' && conn.payment_status !== 'paid' && (
                           <button
                             onClick={() => handlePayConnection(conn.id)}
-                            className="mt-2 inline-flex items-center justify-center rounded-full bg-indigo-600 px-3 py-1 text-xs font-semibold text-white hover:bg-indigo-700"
+                            className="mt-2 inline-flex items-center gap-1 rounded-full bg-indigo-600 px-3 py-1 text-xs font-semibold text-white hover:bg-indigo-500 transition shadow"
                           >
-                            Pay now
+                            <IconCheck className="w-3.5 h-3.5" />
+                            <span>Pay KSh 150</span>
                           </button>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
+                      <td className="px-6 py-4 text-xs text-slate-400">
                         {conn.landlord_note || 'No note added'}
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
+                    <td colSpan={5} className="px-6 py-8 text-center text-slate-400">
                       You haven't requested any property connections yet.
                     </td>
                   </tr>

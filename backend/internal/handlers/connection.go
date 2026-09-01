@@ -89,6 +89,16 @@ func (h *ConnectionHandler) ListConnections(c *gin.Context) {
 	}
 
 	userType := c.Query("user_type") // "landlord" or "tenant"
+	contextUserType, existsType := c.Get("userType")
+	if existsType {
+		if uStr, ok := contextUserType.(string); ok && uStr != "" && uStr != "admin" {
+			userType = uStr
+		}
+	}
+	if userType == "" {
+		userType = "tenant"
+	}
+
 	var rows *sql.Rows
 	var err error
 
@@ -244,8 +254,15 @@ func (h *ConnectionHandler) PayConnection(c *gin.Context) {
 		return
 	}
 
+	tx, err := h.db.BeginTx(c.Request.Context(), nil)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to begin transaction"})
+		return
+	}
+	defer tx.Rollback()
+
 	reference := fmt.Sprintf("connection-%d-payment", connID)
-	_, err = h.db.Exec(
+	_, err = tx.ExecContext(c.Request.Context(),
 		`INSERT INTO payments (user_id, amount, currency, provider, method, status, reference, metadata)
 		 VALUES ($1, $2, 'KES', 'local', 'direct', 'completed', $3, '{}'::jsonb)`,
 		userID.(int), paymentAmount, reference,
@@ -255,12 +272,17 @@ func (h *ConnectionHandler) PayConnection(c *gin.Context) {
 		return
 	}
 
-	_, err = h.db.Exec(
+	_, err = tx.ExecContext(c.Request.Context(),
 		"UPDATE connections SET payment_status = 'paid', updated_at = NOW() WHERE id = $1",
 		connID,
 	)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update connection payment status"})
+		return
+	}
+
+	if err := tx.Commit(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to commit payment transaction"})
 		return
 	}
 

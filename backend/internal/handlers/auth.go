@@ -56,7 +56,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	}
 
 	// Generate token
-	token, err := utils.GenerateToken(userID)
+	token, err := utils.GenerateToken(userID, req.UserType)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
 		return
@@ -103,7 +103,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 
 	// Generate token
-	token, err := utils.GenerateToken(user.ID)
+	token, err := utils.GenerateToken(user.ID, user.UserType)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
 		return

@@ -153,22 +153,41 @@ func (h *PropertyHandler) CreateProperty(c *gin.Context) {
 		req.FloorPlanURLs = []string{}
 	}
 
+	tx, err := h.db.BeginTx(c.Request.Context(), nil)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to begin transaction"})
+		return
+	}
+	defer tx.Rollback()
+
 	// Ensure landlord listing tracker exists
-	h.db.Exec("INSERT INTO landlord_listings (landlord_id) VALUES ($1) ON CONFLICT (landlord_id) DO NOTHING", landlordID)
+	_, err = tx.ExecContext(c.Request.Context(), "INSERT INTO landlord_listings (landlord_id) VALUES ($1) ON CONFLICT (landlord_id) DO NOTHING", landlordID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to initialize listing counter"})
+		return
+	}
 
 	// Check if this is the first free listing or a paid one
 	var freeUsed int
-	h.db.QueryRow(
+	err = tx.QueryRowContext(c.Request.Context(),
 		"SELECT free_listings_used FROM landlord_listings WHERE landlord_id = $1",
 		landlordID,
 	).Scan(&freeUsed)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check listing status"})
+		return
+	}
 
 	if freeUsed == 0 {
 		// First listing is free, mark it as used
-		h.db.Exec("UPDATE landlord_listings SET free_listings_used = 1 WHERE landlord_id = $1", landlordID)
+		_, err = tx.ExecContext(c.Request.Context(), "UPDATE landlord_listings SET free_listings_used = 1 WHERE landlord_id = $1", landlordID)
 	} else {
 		// Charge KSh.250 for additional listings
-		h.db.Exec("UPDATE landlord_listings SET paid_listings = paid_listings + 1 WHERE landlord_id = $1", landlordID)
+		_, err = tx.ExecContext(c.Request.Context(), "UPDATE landlord_listings SET paid_listings = paid_listings + 1 WHERE landlord_id = $1", landlordID)
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update listing count"})
+		return
 	}
 
 	var availableDate *time.Time
@@ -180,7 +199,7 @@ func (h *PropertyHandler) CreateProperty(c *gin.Context) {
 	}
 
 	var property models.Property
-	err := h.db.QueryRow(
+	err = tx.QueryRowContext(c.Request.Context(),
 		`INSERT INTO properties (landlord_id, title, description, address, area, city, neighborhood, bedrooms, bathrooms, property_type, price_per_month, available, status, parking, furnished, pet_friendly, internet, water, electricity, security_features, nearby_schools, nearby_hospitals, nearby_shopping, nearby_transport, available_date, property_rules, image_urls, video_urls, floor_plan_urls)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29)
 		RETURNING id, landlord_id, title, COALESCE(description, ''), address, area, city, neighborhood, bedrooms, bathrooms, property_type, price_per_month, available, status, parking, furnished, pet_friendly, internet, water, electricity, COALESCE(security_features, ''), COALESCE(nearby_schools, ''), COALESCE(nearby_hospitals, ''), COALESCE(nearby_shopping, ''), COALESCE(nearby_transport, ''), available_date, COALESCE(property_rules, ''), image_urls, video_urls, floor_plan_urls, created_at, updated_at`,
@@ -188,13 +207,18 @@ func (h *PropertyHandler) CreateProperty(c *gin.Context) {
 	).Scan(&property.ID, &property.LandlordID, &property.Title, &property.Description, &property.Address, &property.Area, &property.City, &property.Neighborhood, &property.Bedrooms, &property.Bathrooms, &property.PropertyType, &property.PricePerMonth, &property.Available, &property.Status, &property.Parking, &property.Furnished, &property.PetFriendly, &property.Internet, &property.Water, &property.Electricity, &property.SecurityFeatures, &property.NearbySchools, &property.NearbyHospitals, &property.NearbyShopping, &property.NearbyTransport, &property.AvailableDate, &property.PropertyRules, pq.Array(&property.ImageURLs), pq.Array(&property.VideoURLs), pq.Array(&property.FloorPlanURLs), &property.CreatedAt, &property.UpdatedAt)
 
 	if err != nil {
-    log.Printf("CREATE PROPERTY ERROR: %v", err)
-    c.JSON(http.StatusInternalServerError, gin.H{
-        "error": "failed to create property",
-        "details": err.Error(),
-    })
-    return
-}
+		log.Printf("CREATE PROPERTY ERROR: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "failed to create property",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	if err := tx.Commit(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to commit transaction"})
+		return
+	}
 
 	if property.ImageURLs == nil {
 		property.ImageURLs = []string{}

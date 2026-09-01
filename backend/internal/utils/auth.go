@@ -21,25 +21,29 @@ func VerifyPassword(hash, password string) bool {
 	return err == nil
 }
 
-// GenerateToken generates a JWT token
-func GenerateToken(userID int) (string, error) {
+// GenerateToken generates a JWT token including userID and userType
+func GenerateToken(userID int, userType string) (string, error) {
 	secretKey := os.Getenv("JWT_SECRET")
 	if secretKey == "" {
+		if os.Getenv("APP_ENV") == "production" {
+			return "", errors.New("JWT_SECRET environment variable must be set in production")
+		}
 		secretKey = "your-secret-key-change-in-production"
 	}
 
 	expirationTime := time.Now().Add(24 * time.Hour)
 	claims := jwt.MapClaims{
-		"userID": userID,
-		"exp":    expirationTime.Unix(),
+		"userID":   userID,
+		"userType": userType,
+		"exp":      expirationTime.Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(secretKey))
 }
 
-// ValidateToken validates and parses a JWT token
-func ValidateToken(tokenString string) (int, error) {
+// ValidateToken validates and parses a JWT token, returning userID and userType
+func ValidateToken(tokenString string) (int, string, error) {
 	secretKey := os.Getenv("JWT_SECRET")
 	if secretKey == "" {
 		secretKey = "your-secret-key-change-in-production"
@@ -50,18 +54,21 @@ func ValidateToken(tokenString string) (int, error) {
 	})
 
 	if err != nil {
-		return 0, err
+		return 0, "", err
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok || !token.Valid {
-		return 0, errors.New("invalid token")
+		return 0, "", errors.New("invalid token")
 	}
 
-	userID, ok := claims["userID"].(float64)
+	userIDFloat, ok := claims["userID"].(float64)
 	if !ok {
-		return 0, errors.New("invalid userID in token")
+		return 0, "", errors.New("invalid userID in token")
 	}
 
-	return int(userID), nil
+	userType, _ := claims["userType"].(string)
+
+	return int(userIDFloat), userType, nil
 }
+

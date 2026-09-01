@@ -189,3 +189,32 @@ export const favoriteService = {
     await handleResponse<{ message: string }>(response, 'Failed to remove favorite');
   },
 };
+
+export const uploadService = {
+  uploadImages: async (files: FileList | File[]): Promise<string[]> => {
+    const formData = new FormData();
+    Array.from(files).forEach((file) => {
+      formData.append('files', file);
+    });
+
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE_URL}/upload`, {
+      method: 'POST',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: formData,
+    });
+
+    const result = await handleResponse<{ urls: string[] }>(response, 'Failed to upload image files');
+    const backendRoot = API_BASE_URL.replace(/\/api$/, '');
+    return result.urls.map((url) => (url.startsWith('http') || url.startsWith('data:') ? url : `${backendRoot}${url}`));
+  },
+};
+
+export const getFullImageUrl = (url?: string): string => {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) return url;
+  const backendRoot = API_BASE_URL.replace(/\/api$/, '');
+  return `${backendRoot}${url.startsWith('/') ? '' : '/'}${url}`;
+};

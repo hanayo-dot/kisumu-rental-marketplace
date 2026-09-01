@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { IconHome, IconUser } from '../components/Icons';
 
 export default function Register() {
   const navigate = useNavigate();
@@ -49,90 +50,97 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center py-12">
-      <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">Create Account</h1>
-        
+    <div className="min-h-screen text-slate-100 font-smooth flex items-center justify-center p-4 py-10">
+      <div className="glass-dark-card rounded-3xl p-8 max-w-md w-full shadow-2xl border border-slate-700">
+        <div className="flex justify-center mb-4">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-600/30 text-indigo-400 border border-indigo-500/40">
+            <IconUser className="w-6 h-6" />
+          </div>
+        </div>
+
+        <h1 className="text-2xl font-extrabold text-white text-center">Create Account</h1>
+        <p className="text-xs text-slate-300 text-center mt-1 mb-6">Join Kisumu Rental Marketplace</p>
+
         {error && (
-          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
+          <div className="mb-4 p-3 bg-rose-950/80 border border-rose-500/40 text-rose-200 rounded-xl text-xs backdrop-blur">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3.5 text-xs">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Full Name</label>
+            <label className="block text-slate-300 font-semibold mb-1 uppercase tracking-wider">Full Name</label>
             <input
               type="text"
               name="fullName"
               value={formData.fullName}
               onChange={handleChange}
               required
-              className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full px-3.5 py-2.5 bg-slate-950/60 border border-slate-700/80 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
               placeholder="John Doe"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Email</label>
+            <label className="block text-slate-300 font-semibold mb-1 uppercase tracking-wider">Email Address</label>
             <input
               type="email"
               name="email"
               value={formData.email}
               onChange={handleChange}
               required
-              className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full px-3.5 py-2.5 bg-slate-950/60 border border-slate-700/80 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
               placeholder="you@example.com"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Phone</label>
+            <label className="block text-slate-300 font-semibold mb-1 uppercase tracking-wider">Phone</label>
             <input
               type="tel"
               name="phone"
               value={formData.phone}
               onChange={handleChange}
-              className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full px-3.5 py-2.5 bg-slate-950/60 border border-slate-700/80 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
               placeholder="+254..."
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">I am a:</label>
+            <label className="block text-slate-300 font-semibold mb-1 uppercase tracking-wider">Account Role</label>
             <select
               name="userType"
               value={formData.userType}
               onChange={handleChange}
-              className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full px-3.5 py-2.5 bg-slate-950/60 border border-slate-700/80 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500"
             >
-              <option value="tenant">Tenant (Looking for a place)</option>
-              <option value="landlord">Landlord (Listing properties)</option>
+              <option value="tenant" className="bg-slate-900">Tenant (Looking for a place)</option>
+              <option value="landlord" className="bg-slate-900">Landlord (Listing properties)</option>
             </select>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Password</label>
+            <label className="block text-slate-300 font-semibold mb-1 uppercase tracking-wider">Password</label>
             <input
               type="password"
               name="password"
               value={formData.password}
               onChange={handleChange}
               required
-              className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full px-3.5 py-2.5 bg-slate-950/60 border border-slate-700/80 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
               placeholder="••••••••"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Confirm Password</label>
+            <label className="block text-slate-300 font-semibold mb-1 uppercase tracking-wider">Confirm Password</label>
             <input
               type="password"
               name="confirmPassword"
               value={formData.confirmPassword}
               onChange={handleChange}
               required
-              className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full px-3.5 py-2.5 bg-slate-950/60 border border-slate-700/80 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
               placeholder="••••••••"
             />
           </div>
@@ -140,23 +148,24 @@ export default function Register() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-indigo-600 text-white font-semibold py-2 rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 transition"
+            className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-500 disabled:bg-slate-800 transition shadow-lg shadow-indigo-600/30 text-sm mt-2"
           >
             {loading ? 'Creating Account...' : 'Create Account'}
           </button>
         </form>
 
-        <div className="mt-6 text-center space-y-3">
-          <p className="text-gray-600">Already have an account?</p>
+        <div className="mt-6 text-center space-y-3 text-xs">
+          <p className="text-slate-400">Already have an account?</p>
           <button
             onClick={() => navigate('/login')}
-            className="text-indigo-600 font-semibold hover:text-indigo-700"
+            className="text-indigo-400 font-bold hover:text-indigo-300 transition"
           >
             Login here
           </button>
-          <div>
-            <Link to="/" className="text-slate-600 text-sm hover:text-indigo-700">
-              Back to landing page
+          <div className="pt-2">
+            <Link to="/" className="inline-flex items-center gap-1 text-slate-400 hover:text-slate-200">
+              <IconHome className="w-3.5 h-3.5" />
+              <span>Back to Landing Page</span>
             </Link>
           </div>
         </div>

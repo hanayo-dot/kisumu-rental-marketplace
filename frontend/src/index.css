@@ -21,27 +21,50 @@ body,
 body {
   margin: 0;
   padding: 0;
-  background-image: url('https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1600&q=80'),
-    radial-gradient(circle at top left, rgba(99,102,241,0.18), transparent 22%),
-    radial-gradient(circle at bottom right, rgba(14,165,233,0.14), transparent 22%),
-    linear-gradient(180deg, rgba(255,255,255,0.92), rgba(248,250,252,0.94) 48%, #ffffff 100%);
+  background-color: #0f172a;
+  background-image: 
+    radial-gradient(circle at top left, rgba(99, 102, 241, 0.15), transparent 35%),
+    radial-gradient(circle at bottom right, rgba(14, 165, 233, 0.12), transparent 35%),
+    linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
   background-attachment: fixed;
-  background-repeat: no-repeat;
-  background-size: cover;
-  background-blend-mode: overlay, normal, normal, normal;
+  color: #f8fafc;
 }
 
 @layer utilities {
   .animate-fade-in {
-    animation: fade-in 0.9s ease-out both;
+    animation: fade-in 0.7s ease-out both;
   }
   .animate-pop-in {
-    animation: pop-in 0.45s ease-out both;
+    animation: pop-in 0.35s ease-out both;
   }
-  .bg-hero-gradient {
-    background-image: radial-gradient(circle at top left, rgba(99,102,241,0.18), transparent 25%),
-      radial-gradient(circle at bottom right, rgba(14,165,233,0.18), transparent 24%),
-      linear-gradient(180deg, rgba(255,255,255,0.95), rgba(241,245,249,0.9));
+
+  /* Frosted Glassmorphism Utility System */
+  .glass-header {
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .glass-card {
+    background: rgba(30, 41, 59, 0.7);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.3);
+  }
+  .glass-card-light {
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.08);
+  }
+  .glass-dark-card {
+    background: rgba(15, 23, 42, 0.82);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
   }
   .font-smooth {
     font-smoothing: antialiased;
@@ -51,7 +74,7 @@ body {
 @keyframes fade-in {
   from {
     opacity: 0;
-    transform: translateY(16px);
+    transform: translateY(12px);
   }
   to {
     opacity: 1;

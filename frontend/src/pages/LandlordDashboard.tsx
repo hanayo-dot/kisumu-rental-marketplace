@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { propertyService, connectionService } from '../services/api';
+import { propertyService, connectionService, uploadService, getFullImageUrl } from '../services/api';
 import type { Property, Connection } from '../types';
 import Navbar from '../components/Navbar';
+import { IconDashboard, IconHome, IconBed, IconBath, IconMapPin, IconCheck, IconZap } from '../components/Icons';
 
 export default function LandlordDashboard() {
   const navigate = useNavigate();
@@ -11,6 +12,7 @@ export default function LandlordDashboard() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [loading, setLoading] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<'properties' | 'connections'>('properties');
 
@@ -28,6 +30,7 @@ export default function LandlordDashboard() {
     image_urls: [],
   });
   const [previewImages, setPreviewImages] = useState<string[]>([]);
+  const [editingProperty, setEditingProperty] = useState<Property | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -91,41 +94,33 @@ export default function LandlordDashboard() {
     }
   };
 
-  const handleImageSelect = (files: FileList | null) => {
-    if (!files) return;
+  const handleImageSelect = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setUploadingImage(true);
+    setError('');
 
-    const readers = Array.from(files).map((file) => {
-      return new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => reject(new Error('Failed to read file'));
-        reader.readAsDataURL(file);
-      });
-    });
-
-    Promise.all(readers)
-      .then((urls) => {
-        const existing = newProperty.image_urls || [];
-        setNewProperty({ ...newProperty, image_urls: [...existing, ...urls] });
-        setPreviewImages((prev) => [...prev, ...urls]);
-      })
-      .catch(() => {
-        setError('Failed to read selected photos');
-      });
+    try {
+      const uploadedUrls = await uploadService.uploadImages(files);
+      const existing = newProperty.image_urls || [];
+      setNewProperty((prev) => ({ ...prev, image_urls: [...existing, ...uploadedUrls] }));
+      setPreviewImages((prev) => [...prev, ...uploadedUrls]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to upload selected photos');
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   const handleVerifyConnection = async (connectionId: number, status: string) => {
     const note = prompt('Add a note (optional):');
     try {
       await connectionService.verify(connectionId, status, note || '');
-      alert('Connection verified!');
+      alert('Connection status updated!');
       loadConnections();
     } catch (err) {
       alert('Failed to verify connection');
     }
   };
-
-  const [editingProperty, setEditingProperty] = useState<Property | null>(null);
 
   const handleDeleteProperty = async (id: number) => {
     if (!window.confirm('Are you sure you want to delete this property listing?')) return;
@@ -156,85 +151,98 @@ export default function LandlordDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen text-slate-100 font-smooth">
       <Navbar />
 
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="flex gap-4 mb-6">
+      <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+        <div className="glass-dark-card rounded-3xl p-8 mb-8">
+          <div className="flex items-center gap-2 text-indigo-400 mb-2">
+            <IconDashboard className="w-5 h-5" />
+            <span className="text-xs uppercase font-bold tracking-wider">Landlord Portal</span>
+          </div>
+          <h1 className="text-3xl font-extrabold text-white">Property Listing & Connections Dashboard</h1>
+          <p className="mt-1 text-sm text-slate-300">
+            List new rental homes (1st listing free, KSh 250 for extra listings) and verify tenant inquiries.
+          </p>
+        </div>
+
+        <div className="flex gap-3 mb-6">
           <button
             onClick={() => setActiveTab('properties')}
-            className={`px-6 py-2 rounded font-semibold ${
+            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-semibold text-sm transition ${
               activeTab === 'properties'
-                ? 'bg-indigo-600 text-white'
-                : 'bg-white text-gray-700 border border-gray-300'
+                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
+                : 'glass-card text-slate-300 hover:text-white'
             }`}
           >
-            My Properties
+            <IconHome className="w-4 h-4" />
+            <span>My Properties ({properties.length})</span>
           </button>
           <button
             onClick={() => setActiveTab('connections')}
-            className={`px-6 py-2 rounded font-semibold ${
+            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-semibold text-sm transition ${
               activeTab === 'connections'
-                ? 'bg-indigo-600 text-white'
-                : 'bg-white text-gray-700 border border-gray-300'
+                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
+                : 'glass-card text-slate-300 hover:text-white'
             }`}
           >
-            Tenant Inquiries ({connections.length})
+            <IconZap className="w-4 h-4" />
+            <span>Tenant Inquiries ({connections.length})</span>
           </button>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
+          <div className="mb-6 p-4 bg-rose-950/80 border border-rose-500/40 text-rose-200 rounded-2xl text-sm backdrop-blur">
             {error}
           </div>
         )}
 
         {/* Modal for Editing Property */}
         {editingProperty && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
-              <h2 className="text-xl font-bold mb-4">Edit Property</h2>
-              <form onSubmit={handleUpdateProperty} className="space-y-4">
+          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
+            <div className="glass-dark-card rounded-3xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto border border-slate-700">
+              <h2 className="text-xl font-bold text-white mb-4">Edit Property Listing</h2>
+              <form onSubmit={handleUpdateProperty} className="space-y-4 text-xs">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Title</label>
+                  <label className="block text-slate-300 font-semibold mb-1">Title</label>
                   <input
                     type="text"
                     value={editingProperty.title}
                     onChange={(e) => setEditingProperty({ ...editingProperty, title: e.target.value })}
                     required
-                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-3.5 py-2.5 bg-slate-950/60 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-indigo-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Address</label>
+                  <label className="block text-slate-300 font-semibold mb-1">Address</label>
                   <input
                     type="text"
                     value={editingProperty.address}
                     onChange={(e) => setEditingProperty({ ...editingProperty, address: e.target.value })}
                     required
-                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-3.5 py-2.5 bg-slate-950/60 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-indigo-500"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Price (KSh/mo)</label>
+                    <label className="block text-slate-300 font-semibold mb-1">Price (KSh/mo)</label>
                     <input
                       type="number"
                       value={editingProperty.price_per_month}
                       onChange={(e) => setEditingProperty({ ...editingProperty, price_per_month: parseFloat(e.target.value) })}
                       required
-                      className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg"
+                      className="w-full px-3.5 py-2.5 bg-slate-950/60 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-indigo-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Available</label>
+                    <label className="block text-slate-300 font-semibold mb-1">Available</label>
                     <select
                       value={editingProperty.available ? 'true' : 'false'}
                       onChange={(e) => setEditingProperty({ ...editingProperty, available: e.target.value === 'true' })}
-                      className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg"
+                      className="w-full px-3.5 py-2.5 bg-slate-950/60 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-indigo-500"
                     >
-                      <option value="true">Yes</option>
-                      <option value="false">No</option>
+                      <option value="true" className="bg-slate-900">Yes</option>
+                      <option value="false" className="bg-slate-900">No</option>
                     </select>
                   </div>
                 </div>
@@ -242,14 +250,14 @@ export default function LandlordDashboard() {
                   <button
                     type="button"
                     onClick={() => setEditingProperty(null)}
-                    className="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400"
+                    className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl hover:bg-slate-700 font-semibold"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={loading}
-                    className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:bg-gray-400"
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-500 font-semibold shadow"
                   >
                     Save Changes
                   </button>
@@ -261,118 +269,120 @@ export default function LandlordDashboard() {
 
         {activeTab === 'properties' && (
           <>
-            <div className="bg-white rounded-lg shadow p-6 mb-8">
-              <h2 className="text-2xl font-bold mb-6">List a New Property</h2>
-              <form onSubmit={handleAddProperty} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="glass-dark-card rounded-3xl p-8 mb-8">
+              <h2 className="text-xl font-extrabold text-white mb-6">List a New Property</h2>
+              <form onSubmit={handleAddProperty} className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Title</label>
+                  <label className="block font-semibold text-slate-300 uppercase tracking-wider mb-1">Title</label>
                   <input
                     type="text"
                     value={newProperty.title}
                     onChange={(e) => setNewProperty({ ...newProperty, title: e.target.value })}
                     required
-                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                    placeholder="Beautiful 2-bedroom house"
+                    className="w-full px-3.5 py-2.5 bg-slate-950/60 border border-slate-700/80 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                    placeholder="e.g. Modern 3-Bedroom Villa in Milimani"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Area</label>
+                  <label className="block font-semibold text-slate-300 uppercase tracking-wider mb-1">Area</label>
                   <select
                     value={newProperty.area}
                     onChange={(e) => setNewProperty({ ...newProperty, area: e.target.value })}
-                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3.5 py-2.5 bg-slate-950/60 border border-slate-700/80 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500"
                   >
-                    <option value="Kisumu Central">Kisumu Central</option>
-                    <option value="Nyalenda">Nyalenda</option>
-                    <option value="Milimani">Milimani</option>
-                    <option value="Uzima">Uzima</option>
-                    <option value="Oasis">Oasis</option>
+                    <option value="Milimani" className="bg-slate-900">Milimani</option>
+                    <option value="Riat Hills" className="bg-slate-900">Riat Hills</option>
+                    <option value="Kisumu Central" className="bg-slate-900">Kisumu Central</option>
+                    <option value="Uzima" className="bg-slate-900">Uzima</option>
+                    <option value="Nyalenda" className="bg-slate-900">Nyalenda</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Address</label>
+                  <label className="block font-semibold text-slate-300 uppercase tracking-wider mb-1">Address</label>
                   <input
                     type="text"
                     value={newProperty.address}
                     onChange={(e) => setNewProperty({ ...newProperty, address: e.target.value })}
                     required
-                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                    placeholder="123 Main Street"
+                    className="w-full px-3.5 py-2.5 bg-slate-950/60 border border-slate-700/80 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                    placeholder="e.g. 12 Palms Drive"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Price (KSh/month)</label>
+                  <label className="block font-semibold text-slate-300 uppercase tracking-wider mb-1">Price (KSh/month)</label>
                   <input
                     type="number"
                     value={newProperty.price_per_month}
                     onChange={(e) => setNewProperty({ ...newProperty, price_per_month: parseFloat(e.target.value) })}
                     required
-                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                    placeholder="25000"
+                    className="w-full px-3.5 py-2.5 bg-slate-950/60 border border-slate-700/80 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                    placeholder="35000"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Bedrooms</label>
+                  <label className="block font-semibold text-slate-300 uppercase tracking-wider mb-1">Bedrooms</label>
                   <input
                     type="number"
                     value={newProperty.bedrooms}
                     onChange={(e) => setNewProperty({ ...newProperty, bedrooms: parseInt(e.target.value) })}
-                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3.5 py-2.5 bg-slate-950/60 border border-slate-700/80 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Bathrooms</label>
+                  <label className="block font-semibold text-slate-300 uppercase tracking-wider mb-1">Bathrooms</label>
                   <input
                     type="number"
                     value={newProperty.bathrooms}
                     onChange={(e) => setNewProperty({ ...newProperty, bathrooms: parseInt(e.target.value) })}
-                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3.5 py-2.5 bg-slate-950/60 border border-slate-700/80 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Type</label>
+                  <label className="block font-semibold text-slate-300 uppercase tracking-wider mb-1">Type</label>
                   <select
                     value={newProperty.property_type}
                     onChange={(e) => setNewProperty({ ...newProperty, property_type: e.target.value as 'house' | 'apartment' | 'commercial' })}
-                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3.5 py-2.5 bg-slate-950/60 border border-slate-700/80 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500"
                   >
-                    <option value="house">House</option>
-                    <option value="apartment">Apartment</option>
-                    <option value="commercial">Commercial</option>
+                    <option value="house" className="bg-slate-900">House</option>
+                    <option value="apartment" className="bg-slate-900">Apartment</option>
+                    <option value="commercial" className="bg-slate-900">Commercial</option>
                   </select>
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700">Description</label>
+                  <label className="block font-semibold text-slate-300 uppercase tracking-wider mb-1">Description</label>
                   <textarea
                     value={newProperty.description}
                     onChange={(e) => setNewProperty({ ...newProperty, description: e.target.value })}
-                    rows={4}
-                    placeholder="Write a short description for tenants"
-                    className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    rows={3}
+                    placeholder="Provide property details for tenants"
+                    className="w-full px-3.5 py-2.5 bg-slate-950/60 border border-slate-700/80 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500"
                   />
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700">Photos</label>
+                  <label className="block font-semibold text-slate-300 uppercase tracking-wider mb-1">Property Photos</label>
                   <input
                     type="file"
                     accept="image/*"
                     multiple
+                    disabled={uploadingImage}
                     onChange={(e) => handleImageSelect(e.target.files)}
-                    className="mt-1 w-full text-sm text-gray-700"
+                    className="w-full text-xs text-slate-300 bg-slate-950/60 border border-slate-700/80 rounded-xl p-2.5"
                   />
+                  {uploadingImage && <p className="mt-1.5 text-xs text-indigo-400 font-semibold">Uploading photo assets to server...</p>}
                   {previewImages.length > 0 && (
-                    <div className="mt-4 grid grid-cols-2 gap-2">
+                    <div className="mt-4 grid grid-cols-3 gap-3">
                       {previewImages.map((src, index) => (
-                        <div key={index} className="relative overflow-hidden rounded-lg border border-gray-200">
-                          <img src={src} alt={`Preview ${index + 1}`} className="h-24 w-full object-cover" />
+                        <div key={index} className="overflow-hidden rounded-2xl border border-slate-700">
+                          <img src={getFullImageUrl(src)} alt={`Preview ${index + 1}`} className="h-24 w-full object-cover" />
                         </div>
                       ))}
                     </div>
@@ -381,10 +391,10 @@ export default function LandlordDashboard() {
 
                 <button
                   type="submit"
-                  disabled={loading}
-                  className="md:col-span-2 bg-indigo-600 text-white font-semibold py-3 rounded-lg hover:bg-indigo-700 disabled:bg-gray-400"
+                  disabled={loading || uploadingImage}
+                  className="md:col-span-2 bg-indigo-600 text-white font-bold py-3.5 rounded-xl hover:bg-indigo-500 transition shadow-lg shadow-indigo-600/30 disabled:bg-slate-800 text-sm"
                 >
-                  {loading ? 'Adding Property...' : 'List Property (First free, then KSh.250)'}
+                  {loading ? 'Adding Property Listing...' : 'Publish Property (1st Free, then KSh.250)'}
                 </button>
               </form>
             </div>
@@ -392,38 +402,46 @@ export default function LandlordDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {properties.length > 0 ? (
                 properties.map((property) => (
-                  <div key={property.id} className="bg-white rounded-lg shadow overflow-hidden transition duration-300 ease-out motion-safe:animate-pop-in hover:-translate-y-1 hover:shadow-2xl">
+                  <div key={property.id} className="glass-card rounded-3xl overflow-hidden border border-slate-700/80 transition-all hover:-translate-y-1">
                     {property.image_urls && property.image_urls.length > 0 && (
                       <img
-                        src={property.image_urls[0]}
+                        src={getFullImageUrl(property.image_urls[0])}
                         alt={property.title}
                         className="h-48 w-full object-cover"
                       />
                     )}
-                    <div className="p-4">
-                      <h3 className="text-lg font-bold text-gray-900">{property.title}</h3>
-                      <p className="text-gray-600 text-sm">{property.address}</p>
-                      <p className="text-gray-600 text-sm">{property.area}</p>
+                    <div className="p-6">
+                      <h3 className="text-xl font-bold text-white">{property.title}</h3>
+                      <p className="text-xs text-slate-300 flex items-center gap-1 mt-1">
+                        <IconMapPin className="w-3.5 h-3.5 text-indigo-400" />
+                        {property.address}, {property.area}
+                      </p>
                       
-                      <div className="flex justify-between text-sm text-gray-700 my-2">
-                        <span>{property.bedrooms} Beds</span>
-                        <span>{property.bathrooms} Baths</span>
+                      <div className="flex items-center gap-4 text-xs font-semibold text-slate-300 my-3">
+                        <span className="flex items-center gap-1">
+                          <IconBed className="w-4 h-4 text-slate-400" />
+                          {property.bedrooms} Beds
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <IconBath className="w-4 h-4 text-slate-400" />
+                          {property.bathrooms} Baths
+                        </span>
                       </div>
 
-                      <div className="text-lg font-bold text-indigo-600 mb-3">
-                        KSh. {property.price_per_month.toLocaleString()}/mo
+                      <div className="text-xl font-extrabold text-white mb-4">
+                        KSh {property.price_per_month.toLocaleString()} <span className="text-xs text-slate-400 font-normal">/ mo</span>
                       </div>
 
                       <div className="flex gap-2">
                         <button
                           onClick={() => setEditingProperty(property)}
-                          className="flex-1 px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-semibold"
+                          className="flex-1 py-2 bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 rounded-xl text-xs font-semibold hover:bg-indigo-600 hover:text-white transition"
                         >
                           Edit
                         </button>
                         <button
                           onClick={() => handleDeleteProperty(property.id)}
-                          className="flex-1 px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm font-semibold"
+                          className="flex-1 py-2 bg-rose-600/30 text-rose-300 border border-rose-500/40 rounded-xl text-xs font-semibold hover:bg-rose-600 hover:text-white transition"
                         >
                           Delete
                         </button>
@@ -432,8 +450,8 @@ export default function LandlordDashboard() {
                   </div>
                 ))
               ) : (
-                <div className="col-span-full text-center py-8 text-gray-500">
-                  No properties listed yet. Add your first property above!
+                <div className="col-span-full text-center py-12 text-slate-400 glass-dark-card rounded-3xl">
+                  No property listings published yet. Fill out the form above to add your first property!
                 </div>
               )}
             </div>
@@ -441,58 +459,58 @@ export default function LandlordDashboard() {
         )}
 
         {activeTab === 'connections' && (
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-gray-100">
+          <div className="glass-dark-card rounded-3xl overflow-hidden shadow-2xl">
+            <table className="w-full text-left">
+              <thead className="bg-slate-900/80 border-b border-slate-800">
                 <tr>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Tenant Info</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Property</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Status</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Payment</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Action</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-300 uppercase tracking-wider">Tenant Info</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-300 uppercase tracking-wider">Property</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-300 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-300 uppercase tracking-wider">Payment</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-300 uppercase tracking-wider">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y">
+              <tbody className="divide-y divide-slate-800">
                 {connections.length > 0 ? (
                   connections.map((conn) => (
-                    <tr key={conn.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        <div className="font-semibold">{conn.tenant_name || `Tenant #${conn.tenant_id}`}</div>
-                        <div className="text-xs text-gray-500">{conn.tenant_phone && `Phone: ${conn.tenant_phone}`}</div>
-                        <div className="text-xs text-gray-500">{conn.tenant_email && `Email: ${conn.tenant_email}`}</div>
+                    <tr key={conn.id} className="hover:bg-slate-800/40 transition">
+                      <td className="px-6 py-4 text-xs text-slate-200">
+                        <div className="font-bold text-white text-sm">{conn.tenant_name || `Tenant #${conn.tenant_id}`}</div>
+                        <div>{conn.tenant_phone}</div>
+                        <div className="text-slate-400">{conn.tenant_email}</div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 font-medium">
+                      <td className="px-6 py-4 text-sm font-semibold text-white">
                         {conn.property_title || `Property #${conn.property_id}`}
                       </td>
-                      <td className="px-6 py-4 text-sm">
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                      <td className="px-6 py-4 text-xs">
+                        <span className={`px-3 py-1 rounded-full font-semibold border ${
                           conn.status === 'successful'
-                            ? 'bg-green-100 text-green-800'
+                            ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/40'
                             : conn.status === 'rejected'
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-yellow-100 text-yellow-800'
+                            ? 'bg-rose-950/80 text-rose-300 border-rose-500/40'
+                            : 'bg-amber-950/80 text-amber-300 border-amber-500/40'
                         }`}>
                           {conn.status}
                         </span>
                         {conn.landlord_note && (
-                          <div className="text-xs text-gray-500 mt-1">Note: {conn.landlord_note}</div>
+                          <div className="text-xs text-slate-400 mt-1">Note: {conn.landlord_note}</div>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        KSh. {conn.payment_amount} ({conn.payment_status})
+                      <td className="px-6 py-4 text-xs text-slate-200">
+                        KSh {conn.payment_amount} ({conn.payment_status})
                       </td>
-                      <td className="px-6 py-4 text-sm">
+                      <td className="px-6 py-4 text-xs">
                         {conn.status === 'pending' && (
                           <div className="flex gap-2">
                             <button
                               onClick={() => handleVerifyConnection(conn.id, 'viewing_scheduled')}
-                              className="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700"
+                              className="px-3 py-1.5 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-500 transition"
                             >
                               Schedule Viewing
                             </button>
                             <button
                               onClick={() => handleVerifyConnection(conn.id, 'rejected')}
-                              className="px-3 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700"
+                              className="px-3 py-1.5 bg-rose-600 text-white rounded-xl font-semibold hover:bg-rose-500 transition"
                             >
                               Reject
                             </button>
@@ -501,9 +519,10 @@ export default function LandlordDashboard() {
                         {conn.status === 'viewing_scheduled' && (
                           <button
                             onClick={() => handleVerifyConnection(conn.id, 'successful')}
-                            className="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700"
+                            className="px-3 py-1.5 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-500 transition flex items-center gap-1"
                           >
-                            Mark Successful
+                            <IconCheck className="w-3.5 h-3.5" />
+                            <span>Mark Successful</span>
                           </button>
                         )}
                       </td>
@@ -511,8 +530,8 @@ export default function LandlordDashboard() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
-                      No tenant inquiries yet.
+                    <td colSpan={5} className="px-6 py-8 text-center text-slate-400">
+                      No tenant connection inquiries received yet.
                     </td>
                   </tr>
                 )}

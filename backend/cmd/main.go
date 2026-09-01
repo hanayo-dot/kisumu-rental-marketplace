@@ -33,6 +33,9 @@ func main() {
 	// Initialize Gin router
 	router := gin.Default()
 
+	// Serve static upload directory
+	router.Static("/uploads", "./uploads")
+
 	// Middleware
 	router.Use(middleware.CORSMiddleware())
 
@@ -48,15 +51,19 @@ func main() {
 	protected := router.Group("/api")
 	protected.Use(middleware.AuthMiddleware())
 
+	// Upload routes
+	uploadHandler := handlers.NewUploadHandler("./uploads")
+	protected.POST("/upload", uploadHandler.UploadImages)
+
 	// Property routes
 	propertyHandler := handlers.NewPropertyHandler(db)
 	properties := protected.Group("/properties")
 	{
-		properties.POST("", propertyHandler.CreateProperty)
+		properties.POST("", middleware.RequireRole("landlord"), propertyHandler.CreateProperty)
 		properties.GET("", propertyHandler.ListProperties)
 		properties.GET("/:id", propertyHandler.GetProperty)
-		properties.PUT("/:id", propertyHandler.UpdateProperty)
-		properties.DELETE("/:id", propertyHandler.DeleteProperty)
+		properties.PUT("/:id", middleware.RequireRole("landlord"), propertyHandler.UpdateProperty)
+		properties.DELETE("/:id", middleware.RequireRole("landlord"), propertyHandler.DeleteProperty)
 	}
 
 	// User profile routes
@@ -82,7 +89,7 @@ func main() {
 	{
 		connections.POST("", connectionHandler.CreateConnection)
 		connections.GET("", connectionHandler.ListConnections)
-		connections.PUT("/:id/verify", connectionHandler.VerifyConnection)
+		connections.PUT("/:id/verify", middleware.RequireRole("landlord"), connectionHandler.VerifyConnection)
 		connections.POST("/:id/pay", connectionHandler.PayConnection)
 	}
 

@@ -27,8 +27,9 @@ func TestHashAndVerifyPassword(t *testing.T) {
 
 func TestGenerateAndValidateToken(t *testing.T) {
 	userID := 42
+	userType := "landlord"
 
-	token, err := GenerateToken(userID)
+	token, err := GenerateToken(userID, userType)
 	if err != nil {
 		t.Fatalf("Failed to generate token: %v", err)
 	}
@@ -37,7 +38,7 @@ func TestGenerateAndValidateToken(t *testing.T) {
 		t.Fatalf("Generated token is empty")
 	}
 
-	extractedID, err := ValidateToken(token)
+	extractedID, extractedRole, err := ValidateToken(token)
 	if err != nil {
 		t.Fatalf("Failed to validate token: %v", err)
 	}
@@ -45,10 +46,14 @@ func TestGenerateAndValidateToken(t *testing.T) {
 	if extractedID != userID {
 		t.Errorf("Expected userID %d, got %d", userID, extractedID)
 	}
+
+	if extractedRole != userType {
+		t.Errorf("Expected userType %s, got %s", userType, extractedRole)
+	}
 }
 
 func TestValidateInvalidToken(t *testing.T) {
-	_, err := ValidateToken("invalid.jwt.token")
+	_, _, err := ValidateToken("invalid.jwt.token")
 	if err == nil {
 		t.Errorf("Expected error for invalid token, got nil")
 	}
